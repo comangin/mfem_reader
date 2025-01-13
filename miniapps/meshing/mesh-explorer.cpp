@@ -36,6 +36,8 @@
 #include <fstream>
 #include <limits>
 #include <cstdlib>
+#include <chrono>
+#include <sys/resource.h>
 
 using namespace mfem;
 using namespace std;
@@ -113,7 +115,7 @@ Mesh *read_par_mesh(int np, const char *mesh_prefix, Array<int>& partitioning,
               << '!' << endl;
          for (p--; p >= 0; p--)
          {
-            delete mesh_array[p];
+           delete mesh_array[p];
          }
          return NULL;
       }
@@ -261,13 +263,21 @@ void recover_bdr_partitioning(const Mesh* mesh, const Array<int>& partitioning,
    }
 }
 
+long getMemoryUsage() {
+    struct rusage usage;
+    getrusage(RUSAGE_SELF, &usage);
+    return usage.ru_maxrss;
+}
+
 int main (int argc, char *argv[])
 {
    int np = 0;
    const char *mesh_file = "../../data/beam-hex.mesh";
    int visport = 19916;
    bool refine = true;
-
+   long before = getMemoryUsage();
+   auto debut = chrono::high_resolution_clock::now();
+   
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
                   "Mesh file to visualize.");
@@ -296,7 +306,8 @@ int main (int argc, char *argv[])
 
    Mesh *mesh;
    Mesh *bdr_mesh = NULL;
-
+   chrono::duration<double> tempsEcoule2;
+   double part_memory; 
    // Helper to distinguish whether we use a parallel or serial mesh.
    const bool use_par_mesh = np > 0;
 
@@ -330,11 +341,18 @@ int main (int argc, char *argv[])
       attr_fec = new Const2DFECollection;
    }
    else
-   {
+     {
       bdr_attr_fec = new Const2DFECollection;
       attr_fec = new Const3DFECollection;
    }
 
+   
+   long after = getMemoryUsage();
+   auto fin = chrono::high_resolution_clock::now();
+   chrono::duration<double> tempsEcoule1 = fin - debut;
+   cout << "Temps de lecture : " << tempsEcoule1.count() << endl;
+   cout << "Memory lecture : " << after-before << endl;
+   long lect_mem = after - before;
    int print_char = 1;
    while (1)
    {
@@ -1002,9 +1020,11 @@ int main (int argc, char *argv[])
          }
 
          if (mk == 'p')
-         {
-            cout << "What type of partitioning?\n"
-                 "c) Cartesian\n"
+	   {
+	     before = getMemoryUsage();
+	     auto debut2 = chrono::high_resolution_clock::now();
+	     cout << "What type of partitioning?\n"
+	       "c) Cartesian\n"
                  "s) Simple 1D split of the element sequence\n"
                  "0) METIS_PartGraphRecursive (sorted neighbor lists)\n"
                  "1) METIS_PartGraphKway      (sorted neighbor lists)"
@@ -1052,11 +1072,13 @@ int main (int argc, char *argv[])
             {
                int part_method = pk - '0';
                if (part_method < 0 || part_method > 5)
-               {
-                  continue;
-               }
+		 {
+		   continue;
+		 }
                cout << "Enter number of processors: " << flush;
                cin >> np;
+	       before = getMemoryUsage();
+	       auto debut2 = chrono::high_resolution_clock::now();	    
                int *part = mesh->GeneratePartitioning(np, part_method);
                partitioning = Array<int>(part, mesh->GetNE());
                delete [] part;
@@ -1113,7 +1135,14 @@ int main (int argc, char *argv[])
             {
                attr(i) = partitioning[i] + 1;
             }
-         }
+
+	    after = getMemoryUsage();
+	    auto fin2 = chrono::high_resolution_clock::now();
+	    tempsEcoule2 = fin2 - debut2;
+	    cout << "Temps part :" << tempsEcoule2.count() << endl;
+	    cout << "Memory part : " << after-before << endl;
+	    part_memory = after-before; 
+	   }
 
          char vishost[] = "localhost";
          socketstream sol_sock(vishost, visport);
@@ -1257,6 +1286,8 @@ int main (int argc, char *argv[])
 
       if (mk == 'T')
       {
+        before = getMemoryUsage();
+	  auto debut = chrono::high_resolution_clock::now();
          string mesh_prefix("mesh-explorer.mesh."), line;
          MeshPartitioner partitioner(*mesh, np, partitioning);
          MeshPart mesh_part;
@@ -1280,6 +1311,25 @@ int main (int argc, char *argv[])
             mesh_part.Print(omesh);
          }
          cout << "New parallel mesh files: " << mesh_prefix << "<rank>" << endl;
+	 after = getMemoryUsage();
+	 cout << before << " " << after << endl;
+	 auto fin = chrono::high_resolution_clock::now();
+	 chrono::duration<double> tempsEcoule3 = fin - debut;
+
+	 cout << "Temps du ecrit : " << tempsEcoule3.count() << endl;
+	 cout << "memory ecrit : " << after - before << endl;
+	 ofstream outputFile("times_ME.txt");
+	 outputFile << "Temps lecture : " << tempsEcoule1.count() << "\n";
+	 outputFile << "Temps part : " << tempsEcoule2.count() << "\n";
+	 outputFile << "Temps ecri : " << tempsEcoule3.count() << "\n";
+
+	 outputFile << "Memory lecture : " << lect_mem << "\n";
+	 
+	 outputFile << "Memory part : " << part_memory << "\n";
+	 
+	 outputFile << "Memory ecri : " << after - before << "\n";
+	 
+
       }
 
       if (mk == 'V')
