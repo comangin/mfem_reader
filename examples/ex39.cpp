@@ -50,7 +50,7 @@ using namespace mfem;
 int main(int argc, char *argv[])
 {
    // 1. Parse command-line options.
-   const char *mesh_file = "../data/compass.msh";
+   const char *mesh_file = "../data/msh41/compass41.msh";
    int order = 1;
    string source_name = "Rose Even";
    string ess_name = "Boundary";

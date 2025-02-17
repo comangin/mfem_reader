@@ -15,6 +15,10 @@
 #include "../general/text.hpp"
 #include "../general/tinyxml2.h"
 #include "gmsh.hpp"
+#include <chrono> // For timing
+#include <sys/resource.h> // Pour l'utilisation mémoire (uniquement Linux)
+
+
 
 #include <iostream>
 #include <cstdio>
@@ -37,6 +41,32 @@ namespace mfem
 
 bool Mesh::remove_unused_vertices = true;
 
+
+
+void writeToFile(const std::chrono::duration<double> &time, double memory) {
+    std::ofstream file("reader_times.txt", std::ios::app); // Ouverture en mode ajout
+
+    if (!file) {
+        std::cerr << "Impossible d'ouvrir le fichier pour écrire." << std::endl;
+        return;
+    }
+
+    file << "temps : " << time.count() << " secondes" << endl;
+    file << "memoire : " << memory << " Mo" << std::endl;
+    file.close();
+}
+
+
+  
+
+double getMemoryUsage() {
+    struct rusage usage;
+    getrusage(RUSAGE_SELF, &usage);
+    return usage.ru_maxrss / 1024.0; // Retourne l'utilisation mémoire en Mo
+}
+
+
+  
 void Mesh::ReadMFEMMesh(std::istream &input, int version, int &curved)
 {
    // Read MFEM mesh v1.0, v1.2, or v1.3 format
@@ -1526,17 +1556,25 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
   string buff;
   real_t version;
   int binary, dsize;
- std::streampos currentPos = input.tellg();
+  std::streampos currentPos = input.tellg();
 
-  std::cout << "Position First: " << currentPos << std::endl;
+  auto start = std::chrono::high_resolution_clock::now();
+  double mem_before = getMemoryUsage();
+  
+  //std::cout << "Position First: " << currentPos << std::endl;
 
   input >> version;
-  cout << "File version find : " << version << endl; 
+  //  cout << "File version find : " << version << endl; 
 
-    if (version == 4.1)
+  if (version == 4.1)
     {
-       ReadGmshmsh41(input, curved, read_gf);
-       return;
+      ReadGmshmsh41(input, curved, read_gf);
+      auto end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> duration = end - start;
+      double mem_after = getMemoryUsage();
+      double memory = mem_after - mem_before;
+	writeToFile(duration, memory);
+	return;
     }
    if (version < 2.2)
    {
@@ -1622,7 +1660,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
             }
             vertices[ver] = Vertex(coord, gmsh_dim);
             vertices_map[serial_number] = ver;
-	    cout << "ver" << "serial_number" << ver << serial_number << endl; 
+	    // cout << "ver" << "serial_number" << ver << serial_number << endl; 
 
             for (int ci = 0; ci < gmsh_dim; ++ci)
             {
@@ -1644,7 +1682,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
          {
             spaceDim++;
          }
-	 cout << "spaceDim = " << spaceDim;
+	 // cout << "spaceDim = " << spaceDim;
          if (static_cast<int>(vertices_map.size()) != NumOfVertices)
          {
             MFEM_ABORT("Gmsh file : vertices indices are not unique");
@@ -2008,6 +2046,11 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                      vert_indices[vi] = it->second;
                   }
 
+		  
+	       for (int i =0; i < n_elem_nodes; ++i){
+		 //cout << " " << vert_indices[i];
+	       }
+	       // cout << endl;
                   // Non-positive attributes are not allowed in MFEM. However,
                   // by default, Gmsh sets the physical domain of all elements
                   // to zero. In the case that all elements have physical domain
@@ -2206,14 +2249,11 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
          {
             for (int el = 0; el < num_of_all_elements; ++el)
             {
-	      int test;
                input >> serial_number >> type_of_element >> n_tags;
-	       cout << "type elements " << type_of_element << endl;
-	       cout << "n_tags = " <<  n_tags << endl;
+	       //cout << "type elements " << type_of_element << endl;
+	       // cout << "n_tags = " <<  n_tags << endl;
                vector<int> data(n_tags);
-               for (int i = 0; i < n_tags; ++i) { input >> data[i];
-		 cout << "data[" << i << "]" << data[i] << endl;
-		 cin >> test;}
+               for (int i = 0; i < n_tags; ++i) { input >> data[i];}
                // physical domain - the most important value (to distinguish
                // materials with different properties)
                phys_domain = (n_tags > 0) ? data[0] : 1;
@@ -2231,14 +2271,20 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                for (int vi = 0; vi < n_elem_nodes; ++vi)
                {
                   input >> index;
-		  cout << "point " << vi << " v = " << index << endl;
+		  // cout << "index = " << index << endl;
                   map<int, int>::const_iterator it = vertices_map.find(index);
                   if (it == vertices_map.end())
                   {
                      MFEM_ABORT("Gmsh file : vertex index doesn't exist");
                   }
                   vert_indices[vi] = it->second;
+		  
+		  //cout << "point " << vi << " v = " << vert_indices[vi] << endl;
                }
+
+	       for (int i =0; i < n_elem_nodes; ++i){
+		 // cout << vert_indices[i] << endl;
+	       }
 
                // Non-positive attributes are not allowed in MFEM. However,
                // by default, Gmsh sets the physical domain of all elements
@@ -2755,18 +2801,21 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
             if (!strncmp(buff.c_str(), "Affine", 6))
             {
                input >> num_nodes;
-            }
+	    }
             else
             {
                num_nodes = atoi(buff.c_str());
             }
+	    // cout << "num_nodes = " << num_nodes << endl;
             for (int j=0; j<num_nodes; j++)
             {
                int slave, master;
                input >> slave >> master;
+	       // cout << "slave = " << slave << "master = " << master << endl; 
                v2v[slave - 1] = master - 1;
             }
-            getline(input, buff); // Read end-of-line
+             getline(input, buff); // Read end-of-line
+
          }
 
          // Follow existing long chains of slave->master in v2v array.
@@ -2871,6 +2920,12 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
       VectorGridFunctionCoefficient NodesCoef(&Nodes_gf);
       Nodes->ProjectCoefficient(NodesCoef);
    }
+
+   auto end = std::chrono::high_resolution_clock::now();                                                                                                      
+   std::chrono::duration<double> duration = end - start;                                                                                                      
+   double mem_after = getMemoryUsage();                                                                                                                       
+   double memory = mem_after - mem_before;                                                                                                                    
+   writeToFile(duration, memory);  
 }
 
 void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
@@ -2906,7 +2961,7 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
      vector <int> VolumesGPhysical;
    };
    
-   vector<entites_tab> entites_tab_array;
+   //vector<entites_tab> entites_tab_array;
   
    map<int, int> vertices_map;
  
@@ -2921,10 +2976,101 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
    bool periodic = false;
 
    GridFunction Nodes_gf;
-   
+
+   int NumPoints, NumCurves, NumSurfaces, NumVolumes;
+   vector<entites_tab> entites_tab_array;
+
    while (input >> buff)
      {
-       if (buff == "$Entities")
+        if (buff == "$Nodes") // reading mesh vertices
+	 {
+	   int NumOfEntities;
+	   int MinTagV, MaxTagV;
+	   int serial_number; 
+	   int tag;
+	   int spaceDim;
+	   int count_vertex =0;
+	   const int gmsh_dim = 3; // Gmsh always outputs 3 coordinates
+	   int DimEntity, TagEntity, NumVertPerBlock, par;
+	   real_t coord[gmsh_dim];
+
+	   struct Coordonate {
+	     real_t coords[3];
+	   };
+
+	   
+	   input >> NumOfEntities >> NumOfVertices >> MinTagV >> MaxTagV;
+	   //cout << NumOfEntities << " " << NumOfVertices << " " << MinTagV << " " << MaxTagV << endl;
+	   getline(input, buff);
+	   vertices.SetSize(NumOfVertices);
+	   Coordonate arrayOfCoords[NumOfVertices];
+
+	   for (int i = 0; i < NumOfEntities; i = i + 1)
+	     { 
+	       input >> DimEntity >> TagEntity >> par >> NumVertPerBlock;
+	       std::vector<int> index(NumVertPerBlock);
+	       for (int j = 0; j < NumVertPerBlock; j = j + 1)
+		 {
+		   // cout << "tag = " << tag << endl;
+		   input >> tag;
+		   index[j] = tag;
+		 }
+	       for (int j = 0; j < NumVertPerBlock; j = j + 1)
+		 {
+		   for (int k = 0; k < gmsh_dim; k = k + 1)
+		     {
+		       input >> coord[k];
+		       arrayOfCoords[index[j]-1].coords[k] = coord[k];
+		       //  cout << "index = " << index[j]-1 << endl;
+		      	     } 
+		   //cout << count_vertex << " " << coord[0] << " " << coord[1] << " " << coord[2] << endl;
+		 }
+             }
+
+	   // cout << "List of vertices : " << endl;
+	   for (int i = 0; i < NumOfVertices; i = i + 1)
+	     {
+	       for (int k = 0; k < 3; ++k){
+		 coord[k]=arrayOfCoords[i].coords[k];
+		 //cout << coord[k] << " "; 
+	       }
+	       // cout << endl;
+	       vertices[count_vertex] = Vertex(coord, gmsh_dim);
+	       vertices_map[count_vertex+1] = count_vertex;
+	       count_vertex = count_vertex + 1;
+
+	       int ver;
+	       ver = count_vertex;
+	   
+	       for (int ci = 0; ci < gmsh_dim; ++ci)
+		 {
+		   bb_min[ci] = (ver == 0) ? coord[ci] :
+		     std::min(bb_min[ci], coord[ci]);
+		   bb_max[ci] = (ver == 0) ? coord[ci] :
+		     std::max(bb_max[ci], coord[ci]);
+		 }
+
+	     }
+
+	   real_t bb_size = std::max(bb_max[0] - bb_min[0],
+				     std::max(bb_max[1] - bb_min[1],
+					      bb_max[2] - bb_min[2]));
+	       spaceDim = 1;
+	       if (bb_max[1] - bb_min[1] > bb_size * bb_tol)
+		 {
+		   spaceDim++;
+		 }
+	       if (bb_max[2] - bb_min[2] > bb_size * bb_tol)
+		 {
+		   spaceDim++;
+		 }
+
+	       //  cout << "Nombre de vertices = " << count_vertex << endl;
+
+	       if (count_vertex =! NumOfVertices) cerr << "error read vertices" << endl;
+
+	 }// section '$Nodes'
+       else if (buff == "$Entities")
 	 {
 	   //struct entites_tab {
 	   //int num_physical_by_entites;
@@ -2934,19 +3080,18 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	   //vector <int> VolumesGPhysical;
 	   // };
 	    
-	   int NumPoints, NumCurves, NumSurfaces, NumVolumes;
 	   int tag,n_tags,tag_i;
 	   double xmin,ymin,zmin,xmax,ymax,zmax;
 	   
 	   input >> NumPoints >> NumCurves >> NumSurfaces >> NumVolumes;
-	   vector<entites_tab> entites_tab_array(NumPoints+NumCurves+NumSurfaces+NumVolumes);
-	   cout << "The size of entites_tab_array is: " << entites_tab_array.size() << std::endl;
+	   entites_tab_array.resize(NumPoints+NumCurves+NumSurfaces+NumVolumes);
+	   //cout << "The size of entites_tab_array is: " << entites_tab_array.size() << std::endl;
 
 	   // NumPoints 
 	   for (int i = 0; i < NumPoints; ++i) {
 	     // On ne retient pas les physicals tags des points                                         
 	     input >> tag >> xmax >> ymax >> zmax >> n_tags;
-	     cout << "tag = " << tag << " n_tags = " << n_tags << endl;
+	     //cout << "tag = " << tag << " n_tags = " << n_tags << endl;
 
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
@@ -2954,26 +3099,26 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	       entites_tab_array[tag].PointsGPhysical.push_back(tag_i);
 	     }
 	   }
-	   cout << "NumPoints : ok" << endl;
+	   //cout << "NumPoints : ok" << endl;
 
 	   // NumCurves
 	   for (int i = 0; i < NumCurves; ++i) {
 	     input >> tag >> xmin >> ymin >> zmin >> xmax >> ymax >> zmax >> n_tags;
-	     cout << "tag = " << tag << " n_tags = " << n_tags << endl;
+	     //cout << "tag = " << tag << " n_tags = " << n_tags << endl;
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       cout << j << " Tag curve : " << tag << " - Group physic = " << tag_i << endl;
+	       //cout << j << " Tag curve : " << tag << " - Group physic = " << tag_i << endl;
 	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
 	       entites_tab_array[tag].CurvesGPhysical.push_back(tag_i);
 	     }
 	     input >> n_tags;
-	     cout << "decalage : " << n_tags << endl; 
+	     //cout << "decalage : " << n_tags << endl; 
 	     for (int k = 0; k < n_tags; ++k) {
                input >> tag_i;
              }
 	   }
 
-	   cout << "NumCurve : ok" << endl;
+	   // cout << "NumCurve : ok" << endl;
 	   
 	   // NumSurface
 	   for (int i = 0; i < NumSurfaces; ++i) {
@@ -2981,19 +3126,19 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	     // cout << tag << " " << xmax << " " << ymax << " " << zmax << " " << n_tags << endl;
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       cout << j << " Tag surface : " << tag << " - Group physic = " << tag_i;
+	       // cout << j << " Tag surface : " << tag << " - Group physic = " << tag_i;
 	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
 	       entites_tab_array[tag].SurfacesGPhysical.push_back(tag_i);
 	     }
 	   
 	     input >> n_tags;
- 	     cout << "decalage : " << n_tags << endl; 
+ 	     // cout << "decalage : " << n_tags << endl; 
 	     for (int k = 0; k < n_tags; ++k) {
                input >> tag_i;
              }
 	   }
 
-	   cout << "NumSurface : ok" << endl;
+	   // cout << "NumSurface : ok" << endl;
 
 	   // NumVolume
 	   for (int i = 0; i < NumVolumes; ++i) {
@@ -3001,72 +3146,21 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	     // cout << tag << " " << xmax << " " << ymax << " " << zmax << " " << n_tags << endl;
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       cout << j << " Tag Volumes : " << tag << " - Group physic = " << tag_i;
+	       //cout << j << " Tag Volumes : " << tag << " - Group physic = " << tag_i;
 	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
 	       entites_tab_array[tag].VolumesGPhysical.push_back(tag_i);
 	     }
 	     input >> n_tags;
-	     cout << "decalage : " << n_tags << endl; 
+	     //cout << "decalage : " << n_tags << endl; 
 	     for (int k = 0; k < n_tags; ++k) {
                input >> tag_i;
              }
 	   }
-	   cout << "NumVolume : ok" << endl;
-
-	   cout << "ESSAI1 " << entites_tab_array[1].SurfacesGPhysical[0] << endl;
-	   cout << "SIZE = " << entites_tab_array[1].SurfacesGPhysical.size() << endl;
+	   // cout << "NumVolume : ok" << endl;
 
 	 }
-       else if (buff == "$Nodes") // reading mesh vertices
-	 {
-	   int NumOfEntities;
-	   int MinTagV, MaxTagV;
-	   int serial_number; 
-	   int tag;
-	   int count_vertex =0;
-	   const int gmsh_dim = 3; // Gmsh always outputs 3 coordinates
-	   int DimEntity, TagEntity, NumVertPerBlock, par;
-	   real_t coord[gmsh_dim];
-
-	   input >> NumOfEntities >> NumOfVertices >> MinTagV >> MaxTagV;
-	   cout << NumOfEntities << " " << NumOfVertices << " " << MinTagV << " " << MaxTagV << endl;
-	   getline(input, buff);
-	   vertices.SetSize(NumOfVertices);
-
-	   
-
-	   for (int i = 0; i < NumOfEntities; i = i + 1)
-	     {
-	       input >> DimEntity >> TagEntity >> par >> NumVertPerBlock;
-	       for (int j = 0; j < NumVertPerBlock; j = j + 1)
-		 {
-		   input >> tag;
-		 }
-	       for (int j = 0; j < NumVertPerBlock; j = j + 1)
-		 {
-		   for (int k = 0; k < gmsh_dim; k = k + 1)
-		     {
-		       input >> coord[k];
-		     }
-		   cout << count_vertex << " " << coord[0] << " " << coord[1] << " " << coord[2] << endl;
-
-		   vertices[count_vertex] = Vertex(coord, gmsh_dim);
-		   vertices_map[count_vertex+1] = count_vertex;
-		   count_vertex = count_vertex + 1;
-		 }
-	     }
-
-	   // Custom stop message
-	   if (count_vertex =! NumOfVertices) cerr << "error read vertices" << endl;
-
-	 }// section '$Nodes'
-
-       else if (buff == "$Elements")
+      else if (buff == "$Elements")
          {
-
-	   cout << "ESSAI2 " << entites_tab_array.size();
-	   cout << "ESSAI1 " << entites_tab_array[1].SurfacesGPhysical[0];
-
 	   int serial_number; // serial number of an element
 	   int type_of_element; // ID describing a type of a mesh element
 	   int n_tags; // number of different tags describing an element
@@ -3371,10 +3465,10 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	   int num_of_block_elements, minTagElement, maxTagElement;
 	   int DimEntity, Tag, TagEntity, nb_Elements;
 	   input >> num_of_block_elements >> num_of_all_elements >> minTagElement >> maxTagElement;
-	   cout << "nb de blocks = " << num_of_block_elements << endl;
-	   cout	<< "All nb de blocks = " << num_of_all_elements << endl;
-	   cout << "Min tag = " << minTagElement << endl;
-	   cout << "Max tag = " << maxTagElement << endl;
+	   //cout << "nb de blocks = " << num_of_block_elements << endl;
+	   //cout	<< "All nb de blocks = " << num_of_all_elements << endl;
+	   //cout << "Min tag = " << minTagElement << endl;
+	   //cout << "Max tag = " << maxTagElement << endl;
 	   
 	   for (int bk = 0; bk < num_of_block_elements; ++bk)
 	     {
@@ -3382,13 +3476,12 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 
 	       for (int el = 0; el < nb_Elements; ++el)
 		 {
+		   //  cout << "========" << endl;
 		   input >> n_tags;
 		   n_tags =  TagEntity;
-		   cout << "type element = " << type_of_element << endl;
-		   cout << "ESSAI " << entites_tab_array[1].SurfacesGPhysical[0];
-
+	
 		   vector<int> data;
-		   cout << "DimEntity = " << DimEntity << endl;
+
 		   if (DimEntity == 0) {
 		     n_tags = entites_tab_array[TagEntity].PointsGPhysical.size();
 		     data.resize(n_tags);
@@ -3402,12 +3495,8 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 		   }
 
 		   if (DimEntity == 2) {
-		     cout << "n_tags" << endl;
-		     cout << "Tag Entity = " << TagEntity << endl;
 		     n_tags = entites_tab_array[TagEntity].SurfacesGPhysical.size();
-		     cout << "resize" << endl;
 		     data.resize(n_tags);
-		     cout << "put" << endl;
 		     data = entites_tab_array[TagEntity].SurfacesGPhysical;
 		   }
 
@@ -3416,40 +3505,39 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 		     data.resize(n_tags);
 		     data = entites_tab_array[TagEntity].VolumesGPhysical;
 		   }
-		   if (n_tags!=0){
-		     phys_domain = data[1];
-		     elem_domain = TagEntity;
-		   }
-		   cout	<< "DATA SUCESS" << endl;
 
+		   
 		   elem_domain = TagEntity;
-		   // for (int i = 0; i < n_tags; ++i) { input >> data[i]; }
-		   // physical domain - the most important value (to distinguish
-		   // materials with different properties)
+		   
+		   if( n_tags == 0 ) {
+		     phys_domain = 1;
+		     n_tags = 1;
+		   }
+		   int k = 0;
+		   // cout << "n_tags = " << n_tags << endl;
+		     // for (int i = 0; i < n_tags; ++i) { input >> data[i]; }
+		     // physical domain - the most important value (to distinguish
+		     // materials with different properties)
 		     //  phys_domain = (n_tags > 0) ? data[0] : 1;
-		   // elementary domain - to distinguish different geometrical
-		   // domains (typically, it's used rarely)
-		   //elem_domain = (n_tags > 1) ? data[1] : 0;
-		   // the number of tags is bigger than 2 if there are some
-		   // partitions (domain decompositions)
+		     // elementary domain - to distinguish different geometrical
+		     // domains (typically, it's used rarely)
+		     //elem_domain = (n_tags > 1) ? data[1] : 0;
+		     // the number of tags is bigger than 2 if there are some
+		     // partitions (domain decompositions)
 		     // n_partitions = (n_tags > 2) ? data[2] : 0;
 		   // we currently just skip the partitions if they exist, and go
 		   // directly to vertices describing the mesh element
 
-
-		   std::cerr << "END msh 41 read" << std::endl;
-		   exit(EXIT_FAILURE);
-
 		   
 		   const int n_elem_nodes = nodes_of_gmsh_element[type_of_element-1];
-
-		   cout << type_of_element << endl;  
-		   cout << "Nombre de noeuds/elements : " << n_elem_nodes << endl; 
+		   //cout << "type_of_element : " << type_of_element << endl;
+		   // cout << "Nombre de sommets par elements : " << n_elem_nodes << endl;
 		   vector<int> vert_indices(n_elem_nodes);
 		   int index;
 		   for (int vi = 0; vi < n_elem_nodes; ++vi)
 		     {
 		       input >> index;
+		       //cout << index << " ";
 		       map<int, int>::const_iterator it = vertices_map.find(index);
 		       if (it == vertices_map.end())
 			 {
@@ -3457,12 +3545,27 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 			 }
 		       vert_indices[vi] = it->second;
 		     }
+		   // cout << endl;
+		   k=0;
 
-		   // Non-positive attributes are not allowed in MFEM. However,
-		   // by default, Gmsh sets the physical domain of all elements
-		   // to zero. In the case that all elements have physical domain
-		   // zero, we will given them attribute 1. If only some elements
-		   // have physical domain zero, we will throw an error.
+		   while (k < n_tags ) {
+		     if ( data.size() > 0 ) phys_domain = data[k];
+		     k = k + 1;  
+
+		     // cout << endl;
+		     //cout << el << " " <<  DimEntity << " " << n_elem_nodes << " "  << phys_domain << " " << elem_domain << " ";
+
+		     
+		     for (int i =0; i < n_elem_nodes; ++i){
+		       //cout << vert_indices[i]+1 << " ";
+		     }
+		     // cout << endl;
+		    
+		     // Non-positive attributes are not allowed in MFEM. However,
+		     // by default, Gmsh sets the physical domain of all elements
+		     // to zero. In the case that all elements have physical domain
+		     // zero, we will given them attribute 1. If only some elements
+		     // have physical domain zero, we will throw an error.
 		   if (phys_domain <= 0)
 		     {
 		       has_nonpositive_phys_domain = true;
@@ -3648,10 +3751,376 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 		       MFEM_WARNING("Unsupported Gmsh element type.");
 		       break;
 
-		     } // switch (type_of_element)
+		     }  // switch (type_of_element)
+		   }
 		 } // el (all elements)
+	       
 	     }
-}
+	   
+         if (has_positive_phys_domain && has_nonpositive_phys_domain)
+         {
+            MFEM_ABORT("Non-positive element attribute in Gmsh mesh!\n"
+                       "By default Gmsh sets element tags (attributes)"
+                       " to '0' but MFEM requires that they be"
+                       " positive integers.\n"
+                       "Use \"Physical Curve\", \"Physical Surface\","
+                       " or \"Physical Volume\" to set tags/attributes"
+                       " for all curves, surfaces, or volumes in your"
+                       " Gmsh geometry to values which are >= 1.");
+         }
+         else if (has_nonpositive_phys_domain)
+         {
+            mfem::out << "\nGmsh reader: all element attributes were zero.\n"
+                      << "MFEM only supports positive element attributes.\n"
+                      << "Setting element attributes to 1.\n\n";
+         }
+
+         if (!elements_3D.empty())
+         {
+            Dim = 3;
+            NumOfElements = static_cast<int>(elements_3D.size());
+            elements.SetSize(NumOfElements);
+            for (int el = 0; el < NumOfElements; ++el)
+            {
+               elements[el] = elements_3D[el];
+            }
+            NumOfBdrElements = static_cast<int>(elements_2D.size());
+            boundary.SetSize(NumOfBdrElements);
+            for (int el = 0; el < NumOfBdrElements; ++el)
+            {
+               boundary[el] = elements_2D[el];
+            }
+            for (size_t el = 0; el < ho_el_order_3D.size(); el++)
+            {
+               mesh_order = max(mesh_order, ho_el_order_3D[el]);
+            }
+            // discard other elements
+            for (size_t el = 0; el < elements_1D.size(); ++el)
+            {
+               delete elements_1D[el];
+            }
+            for (size_t el = 0; el < elements_0D.size(); ++el)
+            {
+               delete elements_0D[el];
+            }
+         }
+         else if (!elements_2D.empty())
+         {
+            Dim = 2;
+            NumOfElements = static_cast<int>(elements_2D.size());
+            elements.SetSize(NumOfElements);
+            for (int el = 0; el < NumOfElements; ++el)
+            {
+               elements[el] = elements_2D[el];
+            }
+            NumOfBdrElements = static_cast<int>(elements_1D.size());
+            boundary.SetSize(NumOfBdrElements);
+            for (int el = 0; el < NumOfBdrElements; ++el)
+            {
+               boundary[el] = elements_1D[el];
+            }
+            for (size_t el = 0; el < ho_el_order_2D.size(); el++)
+            {
+               mesh_order = max(mesh_order, ho_el_order_2D[el]);
+            }
+            // discard other elements
+            for (size_t el = 0; el < elements_0D.size(); ++el)
+            {
+               delete elements_0D[el];
+            }
+         }
+         else if (!elements_1D.empty())
+         {
+            Dim = 1;
+            NumOfElements = static_cast<int>(elements_1D.size());
+            elements.SetSize(NumOfElements);
+            for (int el = 0; el < NumOfElements; ++el)
+            {
+               elements[el] = elements_1D[el];
+            }
+            NumOfBdrElements = static_cast<int>(elements_0D.size());
+            boundary.SetSize(NumOfBdrElements);
+            for (int el = 0; el < NumOfBdrElements; ++el)
+            {
+               boundary[el] = elements_0D[el];
+            }
+            for (size_t el = 0; el < ho_el_order_1D.size(); el++)
+            {
+               mesh_order = max(mesh_order, ho_el_order_1D[el]);
+            }
+         }
+         else
+         {
+            MFEM_ABORT("Gmsh file : no elements found");
+            return;
+         }
+
+         if (mesh_order > 1)
+         {
+            curved = 1;
+            read_gf = 0;
+
+            // initialize mesh_geoms so we can create Nodes FE space below
+            this->SetMeshGen();
+
+            // Generate faces and edges so that we can define
+            // FE space on the mesh
+            this->FinalizeTopology();
+
+            // Construct GridFunction for uniformly spaced high order coords
+            FiniteElementCollection* nfec;
+            FiniteElementSpace* nfes;
+            nfec = new L2_FECollection(mesh_order, Dim,
+                                       BasisType::ClosedUniform);
+            nfes = new FiniteElementSpace(this, nfec, spaceDim,
+                                          Ordering::byVDIM);
+            Nodes_gf.SetSpace(nfes);
+            Nodes_gf.MakeOwner(nfec);
+
+            int o = 0;
+            int el_order = 1;
+            for (int el = 0; el < NumOfElements; el++)
+            {
+               const int * vm = NULL;
+               Array<int> * ho_verts = NULL;
+               switch (GetElementType(el))
+               {
+                  case Element::SEGMENT:
+                     ho_verts = ho_verts_1D[el];
+                     el_order = ho_el_order_1D[el];
+                     if (!ho_lin[el_order])
+                     {
+                        ho_lin[el_order] = new int[ho_verts->Size()];
+                        GmshHOSegmentMapping(el_order, ho_lin[el_order]);
+                     }
+                     vm = ho_lin[el_order];
+                     break;
+                  case Element::TRIANGLE:
+                     ho_verts = ho_verts_2D[el];
+                     el_order = ho_el_order_2D[el];
+                     if (!ho_tri[el_order])
+                     {
+                        ho_tri[el_order] = new int[ho_verts->Size()];
+                        GmshHOTriangleMapping(el_order, ho_tri[el_order]);
+                     }
+                     vm = ho_tri[el_order];
+                     break;
+                  case Element::QUADRILATERAL:
+                     ho_verts = ho_verts_2D[el];
+                     el_order = ho_el_order_2D[el];
+                     if (!ho_sqr[el_order])
+                     {
+                        ho_sqr[el_order] = new int[ho_verts->Size()];
+                        GmshHOQuadrilateralMapping(el_order, ho_sqr[el_order]);
+                     }
+                     vm = ho_sqr[el_order];
+                     break;
+                  case Element::TETRAHEDRON:
+                     ho_verts = ho_verts_3D[el];
+                     el_order = ho_el_order_3D[el];
+                     if (!ho_tet[el_order])
+                     {
+                        ho_tet[el_order] = new int[ho_verts->Size()];
+                        GmshHOTetrahedronMapping(el_order, ho_tet[el_order]);
+                     }
+                     vm = ho_tet[el_order];
+                     break;
+                  case Element::HEXAHEDRON:
+                     ho_verts = ho_verts_3D[el];
+                     el_order = ho_el_order_3D[el];
+                     if (!ho_hex[el_order])
+                     {
+                        ho_hex[el_order] = new int[ho_verts->Size()];
+                        GmshHOHexahedronMapping(el_order, ho_hex[el_order]);
+                     }
+                     vm = ho_hex[el_order];
+                     break;
+                  case Element::WEDGE:
+                     ho_verts = ho_verts_3D[el];
+                     el_order = ho_el_order_3D[el];
+                     if (!ho_wdg[el_order])
+                     {
+                        ho_wdg[el_order] = new int[ho_verts->Size()];
+                        GmshHOWedgeMapping(el_order, ho_wdg[el_order]);
+                     }
+                     vm = ho_wdg[el_order];
+                     break;
+                  case Element::PYRAMID:
+                     ho_verts = ho_verts_3D[el];
+                     el_order = ho_el_order_3D[el];
+                     if (!ho_pyr[el_order])
+                     {
+                        ho_pyr[el_order] = new int[ho_verts->Size()];
+                        GmshHOPyramidMapping(el_order, ho_pyr[el_order]);
+                     }
+                     vm = ho_pyr[el_order];
+                     break;
+                  default: // Any other element type
+                     MFEM_WARNING("Unsupported Gmsh element type.");
+                     break;
+               }
+               int nv = (ho_verts) ? ho_verts->Size() : 0;
+
+               for (int v = 0; v<nv; v++)
+               {
+                  real_t * c = GetVertex((*ho_verts)[vm[v]]);
+                  for (int d=0; d<spaceDim; d++)
+                  {
+                     Nodes_gf(spaceDim * (o + v) + d) = c[d];
+                  }
+               }
+               o += nv;
+            }
+         }
+
+         // Delete any high order element to vertex connectivity
+         for (size_t el=0; el<ho_verts_1D.size(); el++)
+         {
+            delete ho_verts_1D[el];
+         }
+         for (size_t el=0; el<ho_verts_2D.size(); el++)
+         {
+            delete ho_verts_2D[el];
+         }
+         for (size_t el=0; el<ho_verts_3D.size(); el++)
+         {
+            delete ho_verts_3D[el];
+         }
+
+         // Delete dynamically allocated high vertex order mappings
+         for (int ord=4; ord<ho_lin.Size(); ord++)
+         {
+            if (ho_lin[ord] != NULL) { delete [] ho_lin[ord]; }
+         }
+         for (int ord=4; ord<ho_tri.Size(); ord++)
+         {
+            if (ho_tri[ord] != NULL) { delete [] ho_tri[ord]; }
+         }
+         for (int ord=4; ord<ho_sqr.Size(); ord++)
+         {
+            if (ho_sqr[ord] != NULL) { delete [] ho_sqr[ord]; }
+         }
+         for (int ord=4; ord<ho_tet.Size(); ord++)
+         {
+            if (ho_tet[ord] != NULL) { delete [] ho_tet[ord]; }
+         }
+         for (int ord=4; ord<ho_hex.Size(); ord++)
+         {
+            if (ho_hex[ord] != NULL) { delete [] ho_hex[ord]; }
+         }
+         for (int ord=4; ord<ho_wdg.Size(); ord++)
+         {
+            if (ho_wdg[ord] != NULL) { delete [] ho_wdg[ord]; }
+         }
+         for (int ord=4; ord<ho_pyr.Size(); ord++)
+         {
+            if (ho_pyr[ord] != NULL) { delete [] ho_pyr[ord]; }
+         }
+
+         // Suppress warnings (MFEM_CONTRACT_VAR does not work here with nvcc):
+         ++n_partitions;
+         ++elem_domain;
+         MFEM_CONTRACT_VAR(n_partitions);
+         MFEM_CONTRACT_VAR(elem_domain);
+
+
+
+	   
+	 }
+	  else if (buff == "$Periodic") // Reading master/slave node pairs
+      {
+         curved = 1;
+         read_gf = 0;
+         periodic = true;
+
+         Array<int> v2v(NumOfVertices);
+         for (int i = 0; i < v2v.Size(); i++)
+         {
+            v2v[i] = i;
+         }
+         int num_per_ent;
+         int num_nodes;
+         input >> num_per_ent;
+         getline(input, buff); // Read end-of-line
+         for (int i = 0; i < num_per_ent; i++)
+	   {
+	     getline(input, buff); // Read and ignore entity dimension and tags
+	     getline(input, buff); // If affine mapping exist, read and ignore
+            
+	     input >> num_nodes; 
+	     for (int j=0; j<num_nodes; j++)
+	       {
+		 int slave, master;
+		 input >> slave >> master;
+		 v2v[slave - 1] = master - 1;
+	       }
+	     getline(input, buff); // Read end-of-line
+
+	   }
+
+	  
+         // Follow existing long chains of slave->master in v2v array.
+         // Upon completion of this loop, each v2v[slave] will point to a true
+         // master vertex. This algorithm is useful for periodicity defined in
+         // multiple directions.
+         for (int slave = 0; slave < v2v.Size(); slave++)
+         {
+            int master = v2v[slave];
+            if (master != slave)
+            {
+               // This loop will end if it finds a circular dependency.
+               while (v2v[master] != master && master != slave)
+               {
+                  master = v2v[master];
+               }
+               if (master == slave)
+               {
+                  // if master and slave are the same vertex, circular dependency
+                  // exists. We need to fix the problem, we choose slave.
+                  v2v[slave] = slave;
+               }
+               else
+               {
+                  // the long chain has ended on the true master vertex.
+                  v2v[slave] = master;
+               }
+            }
+         }
+
+	  // Convert nodes to discontinuous GridFunction (if they aren't already)
+         if (mesh_order == 1)
+         {
+            this->FinalizeTopology();
+            this->SetMeshGen();
+            this->SetCurvature(1, true, spaceDim, Ordering::byVDIM);
+         }
+
+         // Replace "slave" vertex indices in the element connectivity
+         // with their corresponding "master" vertex indices.
+         for (int i = 0; i < this->GetNE(); i++)
+         {
+            Element *el = this->GetElement(i);
+            int *v = el->GetVertices();
+            int nv = el->GetNVertices();
+            for (int j = 0; j < nv; j++)
+            {
+               v[j] = v2v[v[j]];
+            }
+         }
+         // Replace "slave" vertex indices in the boundary element connectivity
+         // with their corresponding "master" vertex indices.
+         for (int i = 0; i < this->GetNBE(); i++)
+         {
+            Element *el = this->GetBdrElement(i);
+            int *v = el->GetVertices();
+            int nv = el->GetNVertices();
+            for (int j = 0; j < nv; j++)
+            {
+               v[j] = v2v[v[j]];
+            }
+         }
+      }
+
        else if (buff == "$PhysicalNames") // Named element sets
 	 {
 	   int num_names = 0;
@@ -3686,8 +4155,45 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	 }
    
      }
+      // Process set names
+   if (phys_names_by_dim.size() > 0)
+   {
+      // Process boundary attribute set names
+      for (auto const &bdr_attr : phys_names_by_dim[Dim-1])
+      {
+         if (!bdr_attribute_sets.AttributeSetExists(bdr_attr.second))
+         {
+            bdr_attribute_sets.CreateAttributeSet(bdr_attr.second);
+         }
+         bdr_attribute_sets.AddToAttributeSet(bdr_attr.second, bdr_attr.first);
+      }
 
+      // Process element attribute set names
+      for (auto const &attr : phys_names_by_dim[Dim])
+      {
+         if (!attribute_sets.AttributeSetExists(attr.second))
+         {
+            attribute_sets.CreateAttributeSet(attr.second);
+         }
+         attribute_sets.AddToAttributeSet(attr.second, attr.first);
+      }
+   }
 
+   this->RemoveUnusedVertices();
+   if (periodic)
+   {
+      this->RemoveInternalBoundaries();
+   }
+   this->FinalizeTopology();
+
+   // If a high order coordinate field was created project it onto the mesh
+   if (mesh_order > 1)
+   {
+      SetCurvature(mesh_order, periodic, spaceDim, Ordering::byVDIM);
+
+      VectorGridFunctionCoefficient NodesCoef(&Nodes_gf);
+      Nodes->ProjectCoefficient(NodesCoef);
+   }
 
 
 }
