@@ -86,6 +86,12 @@ if (MFEM_USE_PUMI)
     pumi.hpp)
 endif()
 
+if (MFEM_USE_PETSC)
+  list(APPEND SRCS                                                                             dmplex_mesh.cpp)
+  list(APPEND HDRS
+    dmplex_mesh.hpp)
+endif()   
+
 convert_filenames_to_full_paths(SRCS)
 convert_filenames_to_full_paths(HDRS)
 

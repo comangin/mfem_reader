@@ -22,6 +22,7 @@
 #include "../general/kdtree.hpp"
 #include "../general/sets.hpp"
 #include "../fem/quadinterpolator.hpp"
+#include "dmplex_mesh.hpp"
 
 // headers already included by mesh.hpp: <iostream>, <array>, <map>, <memory>
 #include <sstream>
@@ -33,6 +34,7 @@
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
+
 
 // Include the METIS header, if using version 5. If using METIS 4, the needed
 // declarations are inlined below, i.e. no header is needed.
@@ -4311,6 +4313,8 @@ Mesh::Mesh(const std::string &filename, int generate_edges, int refine,
 {
    // Initialization as in the default constructor
    SetEmpty();
+
+   petsc_test();
 
    named_ifgzstream imesh(filename);
    if (!imesh)
