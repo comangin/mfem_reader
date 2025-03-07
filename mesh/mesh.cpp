@@ -22,7 +22,6 @@
 #include "../general/kdtree.hpp"
 #include "../general/sets.hpp"
 #include "../fem/quadinterpolator.hpp"
-#include "dmplex_mesh.hpp"
 #include <petsc.h>                                                          
 #include <petscdmplex.h>                                                
 #include <petscviewerhdf5.h>                                                                                                  

@@ -8,6 +8,7 @@
 #include "petscdm.h"
 #include "petscdmlabel.h"
 #include "petscds.h"
+#include "dmplex_mesh.hpp"
 #include <petsc.h>
 #include <petscdmplex.h>
 #include <petscviewerhdf5.h>
@@ -16,98 +17,60 @@
 
 
 using namespace std;
-DM dm;
-
-PetscErrorCode LoadMeshHDF5fromfile(const std::string &filename,bool &is_dmplex) {
-  PetscErrorCode ierr;
-  PetscViewer viewer;
-
-  struct _n_DMPlexStorageVersion version = {3, 0, 0};
-
-  // Vérifier si l'extension du fichier est .h5
-  if (filename.length() < 3 || filename.substr(filename.size() - 3) != ".h5") {
-    std::cerr << "Erreur : Le fichier '" << filename << "' n'a pas une extension .h5 valide." << std::endl;
-    is_dmplex = false;
-    return 0;
-  }
-
-  char objectname[PETSC_MAX_PATH_LEN];
-  PetscBool flg;
-
-  // Récupérer l'option -m filename
-  PetscOptionsGetString(nullptr, nullptr, "-o", objectname, sizeof(objectname), &flg);
-
-  if (flg) {
-    // Utiliser le nom de fichier récupéré
-    PetscPrintf(PETSC_COMM_WORLD, "Nom de l'objet : %s\n", objectname);
-  }
-
-  std::cout << "Chargement du fichier : " << filename << std::endl;
-
-  PetscCall(DMPlexCreateFromFile(PETSC_COMM_WORLD, filename.c_str(),objectname, PETSC_TRUE, &dm));
-  PetscCall(PetscObjectSetName((PetscObject)dm, objectname));
-  PetscCall(DMSetOptionsPrefix(dm, "loaded_"));
-  PetscCall(DMViewFromOptions(dm, NULL, "-dm_view"));
-
-  PetscCall(PetscViewerHDF5Open(PETSC_COMM_WORLD, filename.c_str(), FILE_MODE_READ, &viewer));
-  PetscCall(PetscViewerHDF5SetDMPlexStorageVersionReading(viewer, &version));
-
-  std::cout << "Avec succes" << std::endl;
-  is_dmplex=true;
 
 
-  return ierr;
-}
 
+namespace mfem
+{
 
-PetscErrorCode ConversionDmplextoMfem(int curved, int read_gf) {
-    Vec coordinates;
-    PetscInt dim, coordDim, nValues;
-    PetscReal *coords;
-    PetscInt nVertices;
-    PetscMPIInt rank;
+PetscErrorCode Mesh::LoadMeshHDF5fromfile(const std::string &filename,bool &is_dmplex) {
+    PetscErrorCode ierr;
+    PetscViewer viewer;
 
-    PetscCall(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
-    coordDim = 3;
-    dim = 3;
+    struct _n_DMPlexStorageVersion version = {3, 0, 0};
 
-    PetscCall(DMGetCoordinates(dm, &coordinates));
-    PetscCall(VecGetLocalSize(coordinates, &nValues));
-    PetscCall(VecGetArray(coordinates, &coords));
-    nVertices = nValues / coordDim;
-    PetscCall(PetscSynchronizedPrintf(PETSC_COMM_WORLD, "Process %d : Sommets locaux = %d\n", rank, nVertices));
-    for (PetscInt i = 0; i < nVertices; ++i) {
-        PetscCall(PetscSynchronizedPrintf(PETSC_COMM_WORLD, "Process %d : Sommet %d = (", rank, i));
-        for (int d = 0; d < coordDim; ++d) {
-            PetscCall(PetscSynchronizedPrintf(PETSC_COMM_WORLD, "%f", coords[i * coordDim + d]));
-            if (d < coordDim - 1) PetscCall(PetscSynchronizedPrintf(PETSC_COMM_WORLD, ", "));
-        }
-        PetscCall(PetscSynchronizedPrintf(PETSC_COMM_WORLD, ")\n"));
+    // Vérifier si l'extension du fichier est .h5
+    if (filename.length() < 3 || filename.substr(filename.size() - 3) != ".h5") {
+      std::cerr << "Erreur : Le fichier '" << filename << "' n'a pas une extension .h5 valide." << std::endl;
+      is_dmplex = false;
+      return 0;
     }
-    PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
-    PetscCall(VecRestoreArray(coordinates, &coords));
-    
-    // PetscViewer viewer;
-    // PetscViewerVTKOpen(PETSC_COMM_WORLD, "output_mesh_ascii.vtu", FILE_MODE_WRITE, &viewer);
-    // PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_VTK);
-    // DMView(dm, viewer);
-    // PetscViewerDestroy(&viewer);
+
+    char objectname[PETSC_MAX_PATH_LEN];
+    PetscBool flg;
+
+    PetscOptionsGetString(nullptr, nullptr, "-o", objectname, sizeof(objectname), &flg);
 
 
-    return 0;
-}
+    std::cout << "Nom du fichier : " << filename << " et nom du maillage :" << objectname <<  std::endl;
 
-PetscErrorCode LoaderHDF5(int generate_edges, const std::string &parse_tag) {
+    PetscCall(DMPlexCreateFromFile(PETSC_COMM_WORLD, filename.c_str(),objectname, PETSC_TRUE, &dm));
+    PetscCall(PetscObjectSetName((PetscObject)dm, objectname));
+    PetscCall(DMSetOptionsPrefix(dm, "loaded_"));
+    PetscCall(DMViewFromOptions(dm, NULL, "-dm_view"));
+
+    PetscCall(PetscViewerHDF5Open(PETSC_COMM_WORLD, filename.c_str(), FILE_MODE_READ, &viewer));
+    PetscCall(PetscViewerHDF5SetDMPlexStorageVersionReading(viewer, &version));
+
+    std::cout << "Avec succes" << std::endl;
+    is_dmplex=true;
+
+
+    return ierr;
+  }
+
+
+PetscErrorCode Mesh::LoaderHDF5(int generate_edges, const std::string &parse_tag) {
 
   int curved = 0, read_gf = 1;
   bool finalize_topo = true;
 
   const char     *name;
- 
+
   PetscObjectGetName((PetscObject)dm, &name);
   std::cout << "Le nom de l'objet maillage est : " << name << std::endl;
 
-  ConversionDmplextoMfem(curved,read_gf);
+  ReadDmplex(curved,read_gf);
 
     DMDestroy(&dm);
     PetscFinalize();
@@ -170,12 +133,58 @@ PetscErrorCode FinalizeHDF5(bool refine, bool fix_orientation) {
     return 0;
 }
 
-PetscErrorCode LoadDmplex(int generate_edges = 0,
-                          int refine = 1, bool fix_orientation = true)
-{
-  std :: string tag_parse = "";
-  cout << "hello" << endl;
-  LoaderHDF5(generate_edges,tag_parse);
-  //  FinalizeHDF5(refine, fix_orientation);
-  return 0;
+
+PetscErrorCode Mesh::LoadDmplex(int generate_edges,int refine, bool fix_orientation = true)
+  {
+    std :: string tag_parse = "";
+    cout << "hello" << endl;
+    LoaderHDF5(generate_edges,tag_parse);
+    //  FinalizeHDF5(refine, fix_orientation);
+    return 0;
+  }
+
+
+PetscErrorCode Mesh::ReadDmplex(int curved, int read_gf) {
+    Vec coordinates;
+    PetscInt dim, coordDim, nValues;
+    PetscReal *coords;
+    PetscInt nVertices;
+    PetscMPIInt rank;
+
+    PetscCall(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
+    coordDim = 3;
+    dim = 3;
+
+    const char *name;
+    PetscObjectGetName((PetscObject)dm, &name);
+    std::cout << "Le nom de l'objet maillage est : " << name << std::endl;
+
+    PetscCall(DMGetCoordinates(dm, &coordinates));
+    PetscCall(VecGetLocalSize(coordinates, &nValues));
+    PetscCall(VecGetArray(coordinates, &coords));
+    NumOfVertices = nValues / coordDim;
+    vertices.SetSize(NumOfVertices);
+    PetscCall(PetscSynchronizedPrintf(PETSC_COMM_WORLD, "Process %d : Sommets locaux = %d\n", rank, nVertices));
+    real_t coordLocal[3];
+    for (PetscInt i = 0; i < nVertices; ++i) {
+      for (int d = 0; d < coordDim; ++d) {
+       	coordLocal[d] = coords[i * coordDim + d];
+	  }
+      vertices[i]=Vertex(coordLocal,3);
+      cout << "Ok pour " << i << " coordonnée : " << coordLocal[0] << " " << coordLocal[1] << " "  << coordLocal[2] << endl;
+    }
+    PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
+    PetscCall(VecRestoreArray(coordinates, &coords));
+    //vertices[ver] = Vertex(coord, gmsh_dim);
+    // PetscViewer viewer;
+    // PetscViewerVTKOpen(PETSC_COMM_WORLD, "output_mesh_ascii.vtu", FILE_MODE_WRITE, &viewer);
+    // PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_VTK);
+    // DMView(dm, viewer);
+    // PetscViewerDestroy(&viewer);
+
+
+    PrintInfo();
+
+    return 0;
+ }
 }

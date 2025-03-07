@@ -17,7 +17,11 @@
 #include "gmsh.hpp"
 #include <chrono> // For timing
 #include <sys/resource.h> // Pour l'utilisation mémoire (uniquement Linux)
+#include <petsc.h>
 
+#include "dmplex_mesh.hpp"
+#include <petscdmplex.h>                                                                                                                   
+#include <petscviewerhdf5.h>  
 
 
 #include <iostream>
@@ -40,7 +44,6 @@ namespace mfem
 {
 
 bool Mesh::remove_unused_vertices = true;
-
 
 
 void writeToFile(const std::chrono::duration<double> &time, double memory) {
@@ -4198,6 +4201,7 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 
 }
 
+   
 
 #ifdef MFEM_USE_NETCDF
 
