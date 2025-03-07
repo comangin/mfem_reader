@@ -23,6 +23,10 @@
 #include "../general/sets.hpp"
 #include "../fem/quadinterpolator.hpp"
 #include "dmplex_mesh.hpp"
+#include <petsc.h>                                                          
+#include <petscdmplex.h>                                                
+#include <petscviewerhdf5.h>                                                                                                  
+                                
 
 // headers already included by mesh.hpp: <iostream>, <array>, <map>, <memory>
 #include <sstream>
@@ -4309,23 +4313,30 @@ Mesh Mesh::MakeRefined(Mesh &orig_mesh, const Array<int> &ref_factors,
 
 Mesh::Mesh(const std::string &filename, int generate_edges, int refine,
            bool fix_orientation)
- : attribute_sets(attributes), bdr_attribute_sets(bdr_attributes)
+  : attribute_sets(attributes), bdr_attribute_sets(bdr_attributes)
 {
-   // Initialization as in the default constructor
-   SetEmpty();
+  // Initialization as in the default constructor
+  SetEmpty();
+  bool is_dmplex = false;
+  LoadMeshHDF5fromfile(filename,is_dmplex);
 
-   petsc_test();
-
-   named_ifgzstream imesh(filename);
-   if (!imesh)
-   {
-      // Abort with an error message.
-      MFEM_ABORT("Mesh file not found: " << filename << '\n');
-   }
-   else
-   {
-      Load(imesh, generate_edges, refine, fix_orientation);
-   }
+  if (!is_dmplex) {
+    named_ifgzstream imesh(filename);
+    if (!imesh)
+      {
+	// Abort with an error message.
+	MFEM_ABORT("Mesh file not found: " << filename << '\n');
+      }
+    else
+      {
+	Load(imesh, generate_edges, refine, fix_orientation);
+      }
+  }
+  else {
+    LoadDmplex(generate_edges, refine, fix_orientation);
+    exit(0);
+  }
+  
 }
 
 Mesh::Mesh(std::istream &input, int generate_edges, int refine,

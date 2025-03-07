@@ -345,7 +345,7 @@ protected:
   void ReadInlineMesh(std::istream &input, bool generate_edges = false);
   void ReadGmshMesh(std::istream &input, int &curved, int &read_gf);
   void ReadGmshmsh41(std::istream &input, int &curved, int &read_gf);
-         
+
    /* Note NetCDF (optional library) is used for reading cubit files */
 #ifdef MFEM_USE_NETCDF
    /// @brief Load a mesh from a Genesis file.
@@ -747,7 +747,9 @@ public:
        (default) edges are not generated, if 1 edges are generated. */
    /// \see mfem::ifgzstream() for on-the-fly decompression of compressed ascii
    /// inputs.
-   virtual void Load(std::istream &input, int generate_edges = 0,
+
+
+  virtual void Load(std::istream &input, int generate_edges = 0,
                      int refine = 1, bool fix_orientation = true)
    {
       Loader(input, generate_edges);

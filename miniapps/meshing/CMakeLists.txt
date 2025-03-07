@@ -33,6 +33,10 @@ add_custom_command(OUTPUT data_is_copied
   COMMENT "Copying meshing miniapps data files ...")
 add_custom_target(copy_miniapps_meshing_data DEPENDS data_is_copied)
 
+add_mfem_miniapp(reader_test
+  MAIN reader_test.cpp
+  LIBRARIES mfem)
+
 add_mfem_miniapp(klein-bottle
   MAIN klein-bottle.cpp
   LIBRARIES mfem)
