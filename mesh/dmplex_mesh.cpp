@@ -27,7 +27,7 @@ PetscErrorCode Mesh::LoadMeshHDF5fromfile(const std::string &filename,bool &is_d
     PetscErrorCode ierr;
     PetscViewer viewer;
 
-    struct _n_DMPlexStorageVersion version = {3, 0, 0};
+    //struct _n_DMPlexStorageVersion version = {3, 0, 0};
 
     // Vérifier si l'extension du fichier est .h5
     if (filename.length() < 3 || filename.substr(filename.size() - 3) != ".h5") {
@@ -50,7 +50,7 @@ PetscErrorCode Mesh::LoadMeshHDF5fromfile(const std::string &filename,bool &is_d
     PetscCall(DMViewFromOptions(dm, NULL, "-dm_view"));
 
     PetscCall(PetscViewerHDF5Open(PETSC_COMM_WORLD, filename.c_str(), FILE_MODE_READ, &viewer));
-    PetscCall(PetscViewerHDF5SetDMPlexStorageVersionReading(viewer, &version));
+    //PetscCall(PetscViewerHDF5SetDMPlexStorageVersionReading(viewer, &version));
 
     std::cout << "Avec succes" << std::endl;
     is_dmplex=true;
@@ -144,6 +144,30 @@ PetscErrorCode Mesh::LoadDmplex(int generate_edges,int refine, bool fix_orientat
   }
 
 
+
+  static PetscErrorCode PrintVertex(DM dm, PetscInt v)
+{
+  MPI_Comm       comm;
+  PetscContainer c;
+  PetscInt      *extent;
+  PetscInt       dim, cStart, cEnd, sum;
+
+  PetscFunctionBeginUser;
+  PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
+  PetscCall(DMGetDimension(dm, &dim));
+  PetscCall(DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd));
+  PetscCall(PetscObjectQuery((PetscObject)dm, "_extent", (PetscObject *)&c));
+  PetscCall(PetscContainerGetPointer(c, (void **)&extent));
+  sum = 1;
+  PetscCall(PetscPrintf(comm, "Vertex %" PetscInt_FMT ":", v));
+  for (PetscInt d = 0; d < dim; ++d) {
+    PetscCall(PetscPrintf(comm, " %" PetscInt_FMT, (v / sum) % extent[d]));
+    if (d < dim) sum *= extent[d];
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+  
 PetscErrorCode Mesh::ReadDmplex(int curved, int read_gf) {
     Vec coordinates;
     PetscInt dim, coordDim, nValues;
@@ -155,27 +179,71 @@ PetscErrorCode Mesh::ReadDmplex(int curved, int read_gf) {
     coordDim = 3;
     dim = 3;
 
-    const char *name;
-    PetscObjectGetName((PetscObject)dm, &name);
-    std::cout << "Le nom de l'objet maillage est : " << name << std::endl;
-
+    // Vertices
+    
     PetscCall(DMGetCoordinates(dm, &coordinates));
     PetscCall(VecGetLocalSize(coordinates, &nValues));
     PetscCall(VecGetArray(coordinates, &coords));
     NumOfVertices = nValues / coordDim;
     vertices.SetSize(NumOfVertices);
-    PetscCall(PetscSynchronizedPrintf(PETSC_COMM_WORLD, "Process %d : Sommets locaux = %d\n", rank, nVertices));
+    PetscCall(PetscSynchronizedPrintf(PETSC_COMM_WORLD, "Process %d : Sommets locaux = %d\n", rank, NumOfVertices));
+  PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
     real_t coordLocal[3];
-    for (PetscInt i = 0; i < nVertices; ++i) {
+    for (PetscInt i = 0; i < 18; ++i) {
       for (int d = 0; d < coordDim; ++d) {
        	coordLocal[d] = coords[i * coordDim + d];
-	  }
+	//cout << i * coordDim + d << endl;  
+      }
       vertices[i]=Vertex(coordLocal,3);
+      vertices[i] = Vertex(coordLocal, 3);
       cout << "Ok pour " << i << " coordonnée : " << coordLocal[0] << " " << coordLocal[1] << " "  << coordLocal[2] << endl;
+      PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
     }
-    PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
-    PetscCall(VecRestoreArray(coordinates, &coords));
-    //vertices[ver] = Vertex(coord, gmsh_dim);
+
+    
+    DMView(dm, PETSC_VIEWER_STDOUT_WORLD);
+
+    
+    
+    // PetscErrorCode ierr;
+    // PetscInt       cStart, cEnd, pStart, pEnd, c, numVertices;
+    // const PetscInt *cone;
+    // PetscScalar *coord = NULL;
+    // Vec          coordinate;
+    // DM           cdm;
+    // PetscInt     v;
+
+    // ierr = DMGetCoordinateDM(dm, &cdm);CHKERRQ(ierr);
+    // ierr = DMGetCoordinatesLocal(dm, &coordinate);CHKERRQ(ierr);
+    // ierr = VecGetArrayRead(coordinate, (const PetscScalar**)&coord);CHKERRQ(ierr);
+
+    // ierr = DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd);CHKERRQ(ierr);
+
+    // ierr = DMPlexGetHeightStratum(dm, 3, &pStart, &pEnd);CHKERRQ(ierr);
+    // cout << "Number points : " << pEnd-pStart << endl;
+    // cout << "pStart : " << pStart << " , " << "pEnd : " << pEnd << endl; 
+    // cout << "Number elements : " << cEnd-cStart << endl;
+    //   cout << "cStart : " << cStart << " , " << "cEnd : " << cEnd << endl; 
+    // for (c = cStart; c < cEnd; ++c) {
+    //   ierr = DMPlexGetCone(dm, c, &cone);CHKERRQ(ierr);
+    //   ierr = DMPlexGetConeSize(dm, c, &numVertices);CHKERRQ(ierr);
+    //   PetscPrintf(PETSC_COMM_WORLD, "Cellule %D: ", c);
+    //   for (PetscInt i = 0; i < numVertices; ++i) {
+    // 	PetscPrintf(PETSC_COMM_WORLD, "%D ", cone[i]);
+    // 	v = cone[i];
+    // 	PetscScalar *xyz;
+    // 	ierr = DMPlexPointLocalRead(cdm, 0, coord, &xyz);CHKERRQ(ierr);
+    // 	PetscPrintf(PETSC_COMM_WORLD, "%g %g %g ", PetscRealPart(xyz[0]), PetscRealPart(xyz[1]), PetscRealPart(xyz[2]));
+    //   }
+    //   PetscPrintf(PETSC_COMM_WORLD, "\n");
+    // }
+
+
+    
+    DMView(dm, PETSC_VIEWER_STDOUT_WORLD);
+
+    
+    // PetscCall(VecRestoreArray(coordinates, &coords));
     // PetscViewer viewer;
     // PetscViewerVTKOpen(PETSC_COMM_WORLD, "output_mesh_ascii.vtu", FILE_MODE_WRITE, &viewer);
     // PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_VTK);
@@ -187,4 +255,6 @@ PetscErrorCode Mesh::ReadDmplex(int curved, int read_gf) {
 
     return 0;
  }
+
+
 }
