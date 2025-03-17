@@ -144,79 +144,56 @@ PetscErrorCode Mesh::LoadDmplex(int generate_edges,int refine, bool fix_orientat
   }
 
 
-
-  static PetscErrorCode PrintVertex(DM dm, PetscInt v)
-{
-  MPI_Comm       comm;
-  PetscContainer c;
-  PetscInt      *extent;
-  PetscInt       dim, cStart, cEnd, sum;
-
-  PetscFunctionBeginUser;
-  PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
-  PetscCall(DMGetDimension(dm, &dim));
-  PetscCall(DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd));
-  PetscCall(PetscObjectQuery((PetscObject)dm, "_extent", (PetscObject *)&c));
-  PetscCall(PetscContainerGetPointer(c, (void **)&extent));
-  sum = 1;
-  PetscCall(PetscPrintf(comm, "Vertex %" PetscInt_FMT ":", v));
-  for (PetscInt d = 0; d < dim; ++d) {
-    PetscCall(PetscPrintf(comm, " %" PetscInt_FMT, (v / sum) % extent[d]));
-    if (d < dim) sum *= extent[d];
-  }
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-
   
   PetscErrorCode Mesh::ReadDmplex(int curved, int read_gf) {
-     Vec coordinates;
+    Vec coordinates;
     PetscErrorCode ierr;
     IS              globalVertexNumbers = NULL;
     PetscInt dim, coordDim, nValues, numCellsStart, numCellsEnd;
     PetscReal *coords;
-    PetscInt *cones, NumOfVertices, numElements;
+    PetscInt *cones, numElements,dm_dim;
     PetscMPIInt rank;
-    PetscInt *elements;
 
+     
     PetscCall(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
-    dim = 3;
+    coordDim = 3;
     
 
     //  Vertices
-    
     PetscCall(DMGetCoordinates(dm, &coordinates));
-    // PetscCall(DMGetDimension(dm, &dim));
-    cout << "Mesh Dimension is : " << dim << endl;
+    PetscCall(DMGetDimension(dm,&dm_dim));
+    
+    spaceDim=coordDim; // Dimension du maillage
+    Dim=dm_dim;; // Dim Coord
+    
     PetscCall(VecGetLocalSize(coordinates, &nValues));
     PetscCall(VecGetArray(coordinates, &coords));
-    cout << "Number of coordinates :  " << nValues << endl;
-    NumOfVertices = nValues / dim;
+    cout << "Size vec : " << nValues << endl; 
+    NumOfVertices = nValues /coordDim;
     vertices.SetSize(NumOfVertices);
     PetscCall(PetscSynchronizedPrintf(PETSC_COMM_WORLD, "Process %d : Sommets locaux = %d\n", rank, NumOfVertices));
     PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
     real_t coordLocal[3];
-    cout << "all vec : ";
-    for (PetscInt i = 0; i < nValues; ++i) {
-      cout << coords[i] << " " ;
-    }
-    cout << endl;
     
     for (PetscInt i = 0; i < NumOfVertices; ++i) {
-      for (int d = 0; d < dim; ++d) {
-       	coordLocal[d] = coords[i * dim + d];
+      for (int d = 0; d < coordDim; ++d) {
+       	coordLocal[d] = coords[i * coordDim + d];
       } 
-      vertices[i]=Vertex(coordLocal,3);
-      vertices[i] = Vertex(coordLocal, 3);
+      vertices[i]=Vertex(coordLocal,coordDim);
       cout << "Ok pour " << i << " coordonnée : " << coordLocal[0] << " " << coordLocal[1] << " "  << coordLocal[2] << endl;
       PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
     }
 
-    
-    // Elements 3D
+
     cout << endl;
     cout << "Affichage des éléments 3D : " << endl;
     cout << endl;
+    
+    vector<Element*> elements_2D;
+    
+
+
+
     
     ierr = DMPlexGetHeightStratum(dm, 0, &numCellsStart, &numCellsEnd);CHKERRQ(ierr);
     for (PetscInt i = numCellsStart; i < numCellsEnd; ++i) {
@@ -243,109 +220,36 @@ PetscErrorCode Mesh::LoadDmplex(int generate_edges,int refine, bool fix_orientat
 
       for (PetscInt j = 0; j < Nv; ++j) {
     	cout << vertex_tetra[j]-numCellsEnd+1 << " ";
+	vertex_tetra[j]=vertex_tetra[j]-numCellsEnd+1;
       }
+
+      //  elements_2D.push_back(new Triangle(&vertex_tetra[0],1));
+      
       
       DMPlexRestoreTransitiveClosure(dm, i, PETSC_TRUE, &closureSize, (PetscInt**)&closure);CHKERRQ(ierr);
       PetscPrintf(PETSC_COMM_WORLD, "\n");
     }
 
 
-    //    PetscCall(DMPlexGetHeightStratum(dm, 0, &numCellsStart, &numCellsEnd));
-
-    // for (PetscInt i = numCellsStart; i < numCellsEnd; ++i) {
-    //   IS pointIS;
-    //   IS expandedPoints;
-    //   const PetscInt *vertex = NULL;
-    //   PetscInt numVerticesPerElement;
-
-
-    //   // Créer un IS pour le point courant
-    //   PetscInt point = i;
-    //   PetscCall(ISCreateGeneral(PETSC_COMM_SELF, 1, &point, PETSC_COPY_VALUES, &pointIS));
-
-    //   // Obtention des sommets de l'élément i
-    //   PetscCall(DMPlexGetConeRecursiveVertices(dm, pointIS, &expandedPoints));
-
-    //   // Obtenir le tableau de sommets et leur nombre
-    //   PetscCall(ISGetIndices(expandedPoints, &vertex));
-    //   PetscCall(ISGetSize(expandedPoints, &numVerticesPerElement));
-
-    //   PetscPrintf(PETSC_COMM_WORLD, "Élément %d : ", i - numCellsStart);
-    //   cout << numVerticesPerElement << endl;
-    //   cout << endl; 
-    //   for (PetscInt j = 0; j < numVerticesPerElement; ++j) {
-    // 	PetscInt vertexIdx = vertex[j];
-    // 	PetscPrintf(PETSC_COMM_WORLD, "%d ", vertexIdx);
+    // NumOfElements = static_cast<int>(elements_2D.size());
+    // elements.SetSize(NumOfElements);
+    // for (int el = 0; el < NumOfElements; ++el)
+    //   {
+    // 	elements[el] = elements_2D[el];
     //   }
-    //   PetscPrintf(PETSC_COMM_WORLD, "\n");
-
-    //   PetscCall(ISRestoreIndices(expandedPoints, &vertex));
-    //   PetscCall(ISDestroy(&expandedPoints)
-
-  
-
-
-    //    for (PetscInt i = numCellsStart; i < numCellsEnd; ++i) {
-    //   const PetscInt *cone = NULL;
-    //   PetscInt numVerticesPerElement;
-
-    //   PetscCall(DMPlexGetConeSize(dm, i, &numVerticesPerElement)); 
-    //   PetscCall(DMPlexGetCone(dm, i, &cone));
-
-    //   PetscPrintf(PETSC_COMM_WORLD, "Élément %d : ", i - numCellsStart);
-    //   cout << numVerticesPerElement << endl;
-    //   for (PetscInt j = 0; j < numVerticesPerElement; ++j) {
-    //     PetscInt vertexIdx = cone[j];  
-    //     PetscReal x = coords[vertexIdx];
-    //     PetscReal y = coords[vertexIdx];
-    //     PetscReal z = coords[vertexIdx];
-
-    //     PetscPrintf(PETSC_COMM_WORLD, "%d (%.2f, %.2f, %.2f) ", vertexIdx/3);
-    //   }
-    //   PetscPrintf(PETSC_COMM_WORLD, "\n");
-    // }
-
-
-    return 0;
     
-    
-    // PetscErrorCode ierr;
-    // PetscInt       cStart, cEnd, pStart, pEnd, c, numVertices;
-    // const PetscInt *cone;
-    // PetscScalar *coord = NULL;
-    // Vec          coordinate;
-    // DM           cdm;
-    // PetscInt     v;
 
-    // ierr = DMGetCoordinateDM(dm, &cdm);CHKERRQ(ierr);
-    // ierr = DMGetCoordinatesLocal(dm, &coordinate);CHKERRQ(ierr);
-    // ierr = VecGetArrayRead(coordinate, (const PetscScalar**)&coord);CHKERRQ(ierr);
-
-    // ierr = DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd);CHKERRQ(ierr);
-
-    // ierr = DMPlexGetHeightStratum(dm, 3, &pStart, &pEnd);CHKERRQ(ierr);
-    // cout << "Number points : " << pEnd-pStart << endl;
-    // cout << "pStart : " << pStart << " , " << "pEnd : " << pEnd << endl; 
-    // cout << "Number elements : " << cEnd-cStart << endl;
-    //   cout << "cStart : " << cStart << " , " << "cEnd : " << cEnd << endl; 
-    // for (c = cStart; c < cEnd; ++c) {
-    //   ierr = DMPlexGetCone(dm, c, &cone);CHKERRQ(ierr);
-    //   ierr = DMPlexGetConeSize(dm, c, &numVertices);CHKERRQ(ierr);
-    //   PetscPrintf(PETSC_COMM_WORLD, "Cellule %D: ", c);
-    //   for (PetscInt i = 0; i < numVertices; ++i) {
-    // 	PetscPrintf(PETSC_COMM_WORLD, "%D ", cone[i]);
-    // 	v = cone[i];
-    // 	PetscScalar *xyz;
-    // 	ierr = DMPlexPointLocalRead(cdm, 0, coord, &xyz);CHKERRQ(ierr);
-    // 	PetscPrintf(PETSC_COMM_WORLD, "%g %g %g ", PetscRealPart(xyz[0]), PetscRealPart(xyz[1]), PetscRealPart(xyz[2]));
-    //   }
-    //   PetscPrintf(PETSC_COMM_WORLD, "\n");
-    // }
-
-
-    
+        
     DMView(dm, PETSC_VIEWER_STDOUT_WORLD);
+    PrintInfo();
 
+
+    
+    // WRITE MESH TO .MESH MFEM 
+    ofstream mesh_ofs("output_mesh.mesh");
+    Print(mesh_ofs);
+    mesh_ofs.close();
+      
     
     // PetscCall(VecRestoreArray(coordinates, &coords));
     // PetscViewer viewer;
@@ -353,7 +257,7 @@ PetscErrorCode Mesh::LoadDmplex(int generate_edges,int refine, bool fix_orientat
     // PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_VTK);
     // DMView(dm, viewer);
     // PetscViewerDestroy(&viewer);
-
+    return 0;
 
  }
 
