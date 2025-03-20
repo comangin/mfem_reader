@@ -15,14 +15,6 @@
 #include "../general/text.hpp"
 #include "../general/tinyxml2.h"
 #include "gmsh.hpp"
-#include <chrono> // For timing
-#include <sys/resource.h> // Pour l'utilisation mémoire (uniquement Linux)
-#include <petsc.h>
-
-#include "dmplex_mesh.hpp"
-#include <petscdmplex.h>                                                                                                                   
-#include <petscviewerhdf5.h>  
-
 
 #include <iostream>
 #include <cstdio>
@@ -45,31 +37,6 @@ namespace mfem
 
 bool Mesh::remove_unused_vertices = true;
 
-
-void writeToFile(const std::chrono::duration<double> &time, double memory) {
-    std::ofstream file("reader_times.txt", std::ios::app); // Ouverture en mode ajout
-
-    if (!file) {
-        std::cerr << "Impossible d'ouvrir le fichier pour écrire." << std::endl;
-        return;
-    }
-
-    file << "temps : " << time.count() << " secondes" << endl;
-    file << "memoire : " << memory << " Mo" << std::endl;
-    file.close();
-}
-
-
-  
-
-double getMemoryUsage() {
-    struct rusage usage;
-    getrusage(RUSAGE_SELF, &usage);
-    return usage.ru_maxrss / 1024.0; // Retourne l'utilisation mémoire en Mo
-}
-
-
-  
 void Mesh::ReadMFEMMesh(std::istream &input, int version, int &curved)
 {
    // Read MFEM mesh v1.0, v1.2, or v1.3 format
@@ -448,8 +415,6 @@ void Mesh::CreateVTKMesh(const Vector &points, const Array<int> &cell_data,
       Geometry::Type geom = VTKGeometry::GetMFEMGeometry(ct);
       elements[i] = NewElement(geom);
       if (cell_attributes.Size() > 0)
-	   cerr << "END msh 41 read" << endl;
-	   exit(EXIT_FAILURE);
       {
          elements[i]->SetAttribute(cell_attributes[i]);
       }
@@ -1556,32 +1521,20 @@ void Mesh::ReadInlineMesh(std::istream &input, bool generate_edges)
 
 void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 {
-  string buff;
-  real_t version;
-  int binary, dsize;
-  std::streampos currentPos = input.tellg();
+   string buff;
+   real_t version;
+   int binary, dsize;
+   std::streampos currentPos = input.tellg();
+   input >> version;
 
-  auto start = std::chrono::high_resolution_clock::now();
-  double mem_before = getMemoryUsage();
-  
-  //std::cout << "Position First: " << currentPos << std::endl;
-
-  input >> version;
-  //  cout << "File version find : " << version << endl; 
-
-  if (version == 4.1)
+   if (std::fabs(version - 4.1) < std::numeric_limits<double>::epsilon())
     {
       ReadGmshmsh41(input, curved, read_gf);
-      auto end = std::chrono::high_resolution_clock::now();
-      std::chrono::duration<double> duration = end - start;
-      double mem_after = getMemoryUsage();
-      double memory = mem_after - mem_before;
-	writeToFile(duration, memory);
-	return;
+      return;
     }
-   if (version < 2.2)
+   if (std::fabs(version - 2.2) > std::numeric_limits<double>::epsilon())
    {
-      MFEM_ABORT("Gmsh file version < 2.2");
+      MFEM_ABORT("Gmsh file version is different of 2.2 and of 4.1");
    }
    input >> binary >> dsize;
    if (dsize != sizeof(double))
@@ -1618,7 +1571,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
    // Below we set spaceDim by measuring the mesh bounding box and checking for
    // a lower dimensional subspace. The assumption is that the mesh is at least
    // 2D if the y-dimension of the box is non-trivial and 3D if the z-dimension
-   // is non-tr ivial. Note that with these assumptions a 2D mesh parallel to the
+   // is non-trivial. Note that with these assumptions a 2D mesh parallel to the
    // yz plane will be considered a surface mesh embedded in 3D whereas the same
    // 2D mesh parallel to the xy plane will be considered a 2D mesh.
    real_t bb_tol = 1e-14;
@@ -1663,7 +1616,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
             }
             vertices[ver] = Vertex(coord, gmsh_dim);
             vertices_map[serial_number] = ver;
-	    // cout << "ver" << "serial_number" << ver << serial_number << endl; 
 
             for (int ci = 0; ci < gmsh_dim; ++ci)
             {
@@ -1685,7 +1637,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
          {
             spaceDim++;
          }
-	 // cout << "spaceDim = " << spaceDim;
+
          if (static_cast<int>(vertices_map.size()) != NumOfVertices)
          {
             MFEM_ABORT("Gmsh file : vertices indices are not unique");
@@ -2049,11 +2001,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                      vert_indices[vi] = it->second;
                   }
 
-		  
-	       for (int i =0; i < n_elem_nodes; ++i){
-		 //cout << " " << vert_indices[i];
-	       }
-	       // cout << endl;
                   // Non-positive attributes are not allowed in MFEM. However,
                   // by default, Gmsh sets the physical domain of all elements
                   // to zero. In the case that all elements have physical domain
@@ -2924,11 +2871,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
       Nodes->ProjectCoefficient(NodesCoef);
    }
 
-   auto end = std::chrono::high_resolution_clock::now();                                                                                                      
-   std::chrono::duration<double> duration = end - start;                                                                                                      
-   double mem_after = getMemoryUsage();                                                                                                                       
-   double memory = mem_after - mem_before;                                                                                                                    
-   writeToFile(duration, memory);  
 }
 
 void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)

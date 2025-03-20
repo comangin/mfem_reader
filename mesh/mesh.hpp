@@ -344,6 +344,7 @@ protected:
                       bool spacing=false);
    void ReadInlineMesh(std::istream &input, bool generate_edges = false);
    void ReadGmshMesh(std::istream &input, int &curved, int &read_gf);
+   void ReadGmshmsh41(std::istream &input, int &curved, int &read_gf);
 
    /* Note NetCDF (optional library) is used for reading cubit files */
 #ifdef MFEM_USE_NETCDF
