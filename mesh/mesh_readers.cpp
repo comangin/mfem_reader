@@ -1521,24 +1521,30 @@ void Mesh::ReadInlineMesh(std::istream &input, bool generate_edges)
 
 void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 {
+   real_t version;
+   int iversion;
+   input >> version;
+   iversion = static_cast<int>(round(10*version));
+   if (iversion == 41)
+   {
+      ReadGmshFormat41(input, curved, read_gf);
+      return;
+   }
+   if (iversion == 22)
+   {
+      ReadGmshFormat22(input, curved, read_gf);
+      return;
+   }
+   MFEM_ABORT("Gmsh file version is different of 2.2 and of 4.1");
+}
+
+void Mesh::ReadGmshFormat22(std::istream &input, int &curved, int &read_gf)
+{
    string buff;
    real_t version;
    int iversion;
    int binary, dsize;
    std::streampos currentPos = input.tellg();
-   input >> version;
-   iversion = static_cast<int>(round(10*version));
-   if (iversion == 41)
-   {
-      cout << "4.1 GMSH version\n";
-      ReadGmshmsh41(input, curved, read_gf);
-      return;
-   }
-   if (iversion != 22)
-   {
-      MFEM_ABORT("Gmsh file version is different of 2.2 and of 4.1");
-   }
-   cout << "2.2 GMSH version\n";
    input >> binary >> dsize;
    if (dsize != sizeof(double))
    {
@@ -2203,8 +2209,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
             for (int el = 0; el < num_of_all_elements; ++el)
             {
                input >> serial_number >> type_of_element >> n_tags;
-	       //cout << "type elements " << type_of_element << endl;
-	       // cout << "n_tags = " <<  n_tags << endl;
                vector<int> data(n_tags);
                for (int i = 0; i < n_tags; ++i) { input >> data[i];}
                // physical domain - the most important value (to distinguish
@@ -2224,7 +2228,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                for (int vi = 0; vi < n_elem_nodes; ++vi)
                {
                   input >> index;
-		  // cout << "index = " << index << endl;
                   map<int, int>::const_iterator it = vertices_map.find(index);
                   if (it == vertices_map.end())
                   {
@@ -2232,11 +2235,9 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                   }
                   vert_indices[vi] = it->second;
 		  
-		  //cout << "point " << vi << " v = " << vert_indices[vi] << endl;
                }
 
 	       for (int i =0; i < n_elem_nodes; ++i){
-		 // cout << vert_indices[i] << endl;
 	       }
 
                // Non-positive attributes are not allowed in MFEM. However,
@@ -2759,12 +2760,10 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
             {
                num_nodes = atoi(buff.c_str());
             }
-	    // cout << "num_nodes = " << num_nodes << endl;
             for (int j=0; j<num_nodes; j++)
             {
                int slave, master;
                input >> slave >> master;
-	       // cout << "slave = " << slave << "master = " << master << endl; 
                v2v[slave - 1] = master - 1;
             }
              getline(input, buff); // Read end-of-line
@@ -2876,7 +2875,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 
 }
 
-void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
+void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 {
    string buff;
    real_t version;
@@ -2937,11 +2936,8 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	     real_t coords[3];
 	   };
 	   
-	   cout << "step.." << __LINE__ << endl;
 	   input >> NumOfEntities;
-	   cout << "Read_a " << NumOfEntities << endl;
 	   input >> NumOfVertices >> MinTagV >> MaxTagV;
-	   cout << "Read_b " << NumOfVertices << " " << MinTagV << " " << MaxTagV << endl;
 	   getline(input, buff);
 	   vertices.SetSize(NumOfVertices);
 	   Coordonate arrayOfCoords[NumOfVertices];
@@ -2952,7 +2948,6 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	       std::vector<int> index(NumVertPerBlock);
 	       for (int j = 0; j < NumVertPerBlock; j = j + 1)
 		 {
-		   // cout << "tag = " << tag << endl;
 		   input >> tag;
 		   index[j] = tag;
 		 }
@@ -2962,20 +2957,15 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 		     {
 		       input >> coord[k];
 		       arrayOfCoords[index[j]-1].coords[k] = coord[k];
-		       //  cout << "index = " << index[j]-1 << endl;
 		      	     } 
-		   //cout << count_vertex << " " << coord[0] << " " << coord[1] << " " << coord[2] << endl;
 		 }
              }
 
-	   // cout << "List of vertices : " << endl;
 	   for (int i = 0; i < NumOfVertices; i = i + 1)
 	     {
 	       for (int k = 0; k < 3; ++k){
 		 coord[k]=arrayOfCoords[i].coords[k];
-		 //cout << coord[k] << " "; 
 	       }
-	       // cout << endl;
 	       vertices[count_vertex] = Vertex(coord, gmsh_dim);
 	       vertices_map[count_vertex+1] = count_vertex;
 	       count_vertex = count_vertex + 1;
@@ -3006,8 +2996,6 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 		   spaceDim++;
 		 }
 
-	       //  cout << "Nombre de vertices = " << count_vertex << endl;
-
 	       if (count_vertex =! NumOfVertices) cerr << "error read vertices" << endl;
 
 	 }// section '$Nodes'
@@ -3022,9 +3010,7 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	   entites_tab_array.resize(NumPoints+NumCurves+NumSurfaces+NumVolumes);
 
 	   for (int i = 0; i < NumPoints; ++i) {
-	     // We don't save the physical tags
 	     input >> tag >> xmax >> ymax >> zmax >> n_tags;
-	     //TOREMOVE cout << "tag = " << tag << " n_tags = " << n_tags << endl;
 
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
@@ -3035,10 +3021,8 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 
 	   for (int i = 0; i < NumCurves; ++i) {
 	     input >> tag >> xmin >> ymin >> zmin >> xmax >> ymax >> zmax >> n_tags;
-	     cout << "tag = " << tag << "xmin " << xmin << " n_tags = " << n_tags << endl;
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       //TOREMOVE cout << j << " Tag curve : " << tag << " - Group physic = " << tag_i << endl;
 	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
 	       entites_tab_array[tag].CurvesGPhysical.push_back(tag_i);
 	     }
@@ -3050,16 +3034,14 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 
 	   for (int i = 0; i < NumSurfaces; ++i) {
 	     input >> tag >> xmin >> ymin >> zmin >> xmax >> ymax >> zmax >> n_tags;
-	     //TOREMOVE cout << tag << " " << xmax << " " << ymax << " " << zmax << " " << n_tags << endl;
+
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       //TOREMOVE cout << j << " Tag surface : " << tag << " - Group physic = " << tag_i;
 	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
 	       entites_tab_array[tag].SurfacesGPhysical.push_back(tag_i);
 	     }
 	   
 	     input >> n_tags;
- 	     //TOREMOVE cout << "decalage : " << n_tags << endl; 
 	     for (int k = 0; k < n_tags; ++k) {
                input >> tag_i;
              }
@@ -3067,15 +3049,13 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 
 	   for (int i = 0; i < NumVolumes; ++i) {
 	     input >> tag >> xmin >> ymin >> zmin >> xmax >> ymax >> zmax >> n_tags;
-	     //TOREMOVE cout << tag << " " << xmax << " " << ymax << " " << zmax << " " << n_tags << endl;
+
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       //TOREMOVE cout << j << " Tag Volumes : " << tag << " - Group physic = " << tag_i;
 	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
 	       entites_tab_array[tag].VolumesGPhysical.push_back(tag_i);
 	     }
 	     input >> n_tags;
-	     //TOREMOVE cout << "decalage : " << n_tags << endl; 
 	     for (int k = 0; k < n_tags; ++k) {
                input >> tag_i;
              }
@@ -3470,15 +3450,9 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 		   while (k < n_tags ) {
 		     if ( data.size() > 0 ) phys_domain = data[k];
 		     k = k + 1;  
-
-		     // cout << endl;
-		     //cout << el << " " <<  DimEntity << " " << n_elem_nodes << " "  << phys_domain << " " << elem_domain << " ";
-
-		     
+	     
 		     for (int i =0; i < n_elem_nodes; ++i){
-		       //cout << vert_indices[i]+1 << " ";
 		     }
-		     // cout << endl;
 		    
 		     // Non-positive attributes are not allowed in MFEM. However,
 		     // by default, Gmsh sets the physical domain of all elements
