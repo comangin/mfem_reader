@@ -2940,8 +2940,7 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   input >> NumOfVertices >> MinTagV >> MaxTagV;
 	   getline(input, buff);
 	   vertices.SetSize(NumOfVertices);
-	   Coordonate arrayOfCoords[NumOfVertices];
-
+	   int ver = 0;
 	   for (int i = 0; i < NumOfEntities; i = i + 1)
 	     { 
 	       input >> DimEntity >> TagEntity >> par >> NumVertPerBlock;
@@ -2956,48 +2955,36 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 		   for (int k = 0; k < gmsh_dim; k = k + 1)
 		     {
 		       input >> coord[k];
-		       arrayOfCoords[index[j]-1].coords[k] = coord[k];
-		      	     } 
+		     } 
+		   vertices[ver] = Vertex(coord, gmsh_dim);
+		   vertices_map[index[j]] = ver;
+		   for (int ci = 0; ci < gmsh_dim; ++ci)
+		     {
+		       bb_min[ci] = (ver == 0) ? coord[ci] :
+			 std::min(bb_min[ci], coord[ci]);
+		       bb_max[ci] = (ver == 0) ? coord[ci] :
+			 std::max(bb_max[ci], coord[ci]);
+		     }
+		   ver++;
 		 }
-             }
-
-	   for (int i = 0; i < NumOfVertices; i = i + 1)
-	     {
-	       for (int k = 0; k < 3; ++k){
-		 coord[k]=arrayOfCoords[i].coords[k];
-	       }
-	       vertices[count_vertex] = Vertex(coord, gmsh_dim);
-	       vertices_map[count_vertex+1] = count_vertex;
-	       count_vertex = count_vertex + 1;
-
-	       int ver;
-	       ver = count_vertex;
-	   
-	       for (int ci = 0; ci < gmsh_dim; ++ci)
-		 {
-		   bb_min[ci] = (ver == 0) ? coord[ci] :
-		     std::min(bb_min[ci], coord[ci]);
-		   bb_max[ci] = (ver == 0) ? coord[ci] :
-		     std::max(bb_max[ci], coord[ci]);
-		 }
-
 	     }
 
+	   count_vertex = ver;
 	   real_t bb_size = std::max(bb_max[0] - bb_min[0],
 				     std::max(bb_max[1] - bb_min[1],
 					      bb_max[2] - bb_min[2]));
-	       spaceDim = 1;
-	       if (bb_max[1] - bb_min[1] > bb_size * bb_tol)
-		 {
-		   spaceDim++;
+	   spaceDim = 1;
+	   if (bb_max[1] - bb_min[1] > bb_size * bb_tol)
+	     {
+	       spaceDim++;
 		 }
-	       if (bb_max[2] - bb_min[2] > bb_size * bb_tol)
-		 {
-		   spaceDim++;
-		 }
-
-	       if (count_vertex =! NumOfVertices) cerr << "error read vertices" << endl;
-
+	   if (bb_max[2] - bb_min[2] > bb_size * bb_tol)
+	     {
+	       spaceDim++;
+	     }
+	   
+	   if (count_vertex =! NumOfVertices) cerr << "error read vertices" << endl;
+	   
 	 }// section '$Nodes'
        else if (buff == "$Entities")
 	 {
@@ -3371,7 +3358,6 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   //cout	<< "All nb de blocks = " << num_of_all_elements << endl;
 	   //cout << "Min tag = " << minTagElement << endl;
 	   //cout << "Max tag = " << maxTagElement << endl;
-	   
 	   for (int bk = 0; bk < num_of_block_elements; ++bk)
 	     {
 	       input >> DimEntity >> TagEntity >> type_of_element >> nb_Elements;
