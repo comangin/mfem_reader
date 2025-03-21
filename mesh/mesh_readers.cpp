@@ -1523,19 +1523,22 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 {
    string buff;
    real_t version;
+   int iversion;
    int binary, dsize;
    std::streampos currentPos = input.tellg();
    input >> version;
-
-   if (std::fabs(version - 4.1) < std::numeric_limits<double>::epsilon())
-    {
+   iversion = static_cast<int>(round(10*version));
+   if (iversion == 41)
+   {
+      cout << "4.1 GMSH version\n";
       ReadGmshmsh41(input, curved, read_gf);
       return;
-    }
-   if (std::fabs(version - 2.2) > std::numeric_limits<double>::epsilon())
+   }
+   if (iversion != 22)
    {
       MFEM_ABORT("Gmsh file version is different of 2.2 and of 4.1");
    }
+   cout << "2.2 GMSH version\n";
    input >> binary >> dsize;
    if (dsize != sizeof(double))
    {
@@ -2881,22 +2884,15 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
    input.clear();            
    input.seekg(12, ios::beg); 
    input >> version >> binary >> dsize;
-   if (binary == 0) cout << "ASCII" << endl;   
+   if (binary == 1)
+   {
+      MFEM_ABORT("Gmsh4.1 format is supported nonly in ASCII format, not in binary format");
+   }
    if (dsize != sizeof(double))
    {
       MFEM_ABORT("Gmsh file : dsize != sizeof(double)");
    }
    getline(input, buff);
-   // There is a number 1 in binary format
-   if (binary)
-   {
-      int one;
-      input.read(reinterpret_cast<char*>(&one), sizeof(one));
-      if (one != 1)
-      {
-         MFEM_ABORT("Gmsh file : wrong binary format");
-      }
-   }
 
    struct entites_tab {
      int num_physical_by_entites;
@@ -2906,8 +2902,6 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
      vector <int> VolumesGPhysical;
    };
    
-   //vector<entites_tab> entites_tab_array;
-  
    map<int, int> vertices_map;
  
    map<int,map<int,std::string> > phys_names_by_dim;
@@ -2942,10 +2936,12 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	   struct Coordonate {
 	     real_t coords[3];
 	   };
-
 	   
-	   input >> NumOfEntities >> NumOfVertices >> MinTagV >> MaxTagV;
-	   //cout << NumOfEntities << " " << NumOfVertices << " " << MinTagV << " " << MaxTagV << endl;
+	   cout << "step.." << __LINE__ << endl;
+	   input >> NumOfEntities;
+	   cout << "Read_a " << NumOfEntities << endl;
+	   input >> NumOfVertices >> MinTagV >> MaxTagV;
+	   cout << "Read_b " << NumOfVertices << " " << MinTagV << " " << MaxTagV << endl;
 	   getline(input, buff);
 	   vertices.SetSize(NumOfVertices);
 	   Coordonate arrayOfCoords[NumOfVertices];
@@ -3017,26 +3013,18 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	 }// section '$Nodes'
        else if (buff == "$Entities")
 	 {
-	   //struct entites_tab {
-	   //int num_physical_by_entites;
-	   //vector <int> PointsGPhysical;
-	   //vector <int> CurvesGPhysical;
-	   //vector <int> SurfacesGPhysical;
-	   //vector <int> VolumesGPhysical;
-	   // };
-	    
-	   int tag,n_tags,tag_i;
+	   int tag,tag_i;
+	   size_t n_tags;
 	   double xmin,ymin,zmin,xmax,ymax,zmax;
 	   
+	   getline(input, buff);
 	   input >> NumPoints >> NumCurves >> NumSurfaces >> NumVolumes;
 	   entites_tab_array.resize(NumPoints+NumCurves+NumSurfaces+NumVolumes);
-	   //cout << "The size of entites_tab_array is: " << entites_tab_array.size() << std::endl;
 
-	   // NumPoints 
 	   for (int i = 0; i < NumPoints; ++i) {
-	     // On ne retient pas les physicals tags des points                                         
+	     // We don't save the physical tags
 	     input >> tag >> xmax >> ymax >> zmax >> n_tags;
-	     //cout << "tag = " << tag << " n_tags = " << n_tags << endl;
+	     //TOREMOVE cout << "tag = " << tag << " n_tags = " << n_tags << endl;
 
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
@@ -3044,65 +3032,54 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 	       entites_tab_array[tag].PointsGPhysical.push_back(tag_i);
 	     }
 	   }
-	   //cout << "NumPoints : ok" << endl;
 
-	   // NumCurves
 	   for (int i = 0; i < NumCurves; ++i) {
 	     input >> tag >> xmin >> ymin >> zmin >> xmax >> ymax >> zmax >> n_tags;
-	     //cout << "tag = " << tag << " n_tags = " << n_tags << endl;
+	     cout << "tag = " << tag << "xmin " << xmin << " n_tags = " << n_tags << endl;
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       //cout << j << " Tag curve : " << tag << " - Group physic = " << tag_i << endl;
+	       //TOREMOVE cout << j << " Tag curve : " << tag << " - Group physic = " << tag_i << endl;
 	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
 	       entites_tab_array[tag].CurvesGPhysical.push_back(tag_i);
 	     }
 	     input >> n_tags;
-	     //cout << "decalage : " << n_tags << endl; 
 	     for (int k = 0; k < n_tags; ++k) {
-               input >> tag_i;
+	       input >> tag_i;
              }
 	   }
 
-	   // cout << "NumCurve : ok" << endl;
-	   
-	   // NumSurface
 	   for (int i = 0; i < NumSurfaces; ++i) {
 	     input >> tag >> xmin >> ymin >> zmin >> xmax >> ymax >> zmax >> n_tags;
-	     // cout << tag << " " << xmax << " " << ymax << " " << zmax << " " << n_tags << endl;
+	     //TOREMOVE cout << tag << " " << xmax << " " << ymax << " " << zmax << " " << n_tags << endl;
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       // cout << j << " Tag surface : " << tag << " - Group physic = " << tag_i;
+	       //TOREMOVE cout << j << " Tag surface : " << tag << " - Group physic = " << tag_i;
 	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
 	       entites_tab_array[tag].SurfacesGPhysical.push_back(tag_i);
 	     }
 	   
 	     input >> n_tags;
- 	     // cout << "decalage : " << n_tags << endl; 
+ 	     //TOREMOVE cout << "decalage : " << n_tags << endl; 
 	     for (int k = 0; k < n_tags; ++k) {
                input >> tag_i;
              }
 	   }
 
-	   // cout << "NumSurface : ok" << endl;
-
-	   // NumVolume
 	   for (int i = 0; i < NumVolumes; ++i) {
 	     input >> tag >> xmin >> ymin >> zmin >> xmax >> ymax >> zmax >> n_tags;
-	     // cout << tag << " " << xmax << " " << ymax << " " << zmax << " " << n_tags << endl;
+	     //TOREMOVE cout << tag << " " << xmax << " " << ymax << " " << zmax << " " << n_tags << endl;
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       //cout << j << " Tag Volumes : " << tag << " - Group physic = " << tag_i;
+	       //TOREMOVE cout << j << " Tag Volumes : " << tag << " - Group physic = " << tag_i;
 	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
 	       entites_tab_array[tag].VolumesGPhysical.push_back(tag_i);
 	     }
 	     input >> n_tags;
-	     //cout << "decalage : " << n_tags << endl; 
+	     //TOREMOVE cout << "decalage : " << n_tags << endl; 
 	     for (int k = 0; k < n_tags; ++k) {
                input >> tag_i;
              }
 	   }
-	   // cout << "NumVolume : ok" << endl;
-
 	 }
       else if (buff == "$Elements")
          {
@@ -3421,7 +3398,6 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 
 	       for (int el = 0; el < nb_Elements; ++el)
 		 {
-		   //  cout << "========" << endl;
 		   input >> n_tags;
 		   n_tags =  TagEntity;
 	
@@ -3482,7 +3458,6 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 		   for (int vi = 0; vi < n_elem_nodes; ++vi)
 		     {
 		       input >> index;
-		       //cout << index << " ";
 		       map<int, int>::const_iterator it = vertices_map.find(index);
 		       if (it == vertices_map.end())
 			 {
@@ -3490,7 +3465,6 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
 			 }
 		       vert_indices[vi] = it->second;
 		     }
-		   // cout << endl;
 		   k=0;
 
 		   while (k < n_tags ) {
@@ -3977,7 +3951,6 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
          curved = 1;
          read_gf = 0;
          periodic = true;
-
          Array<int> v2v(NumOfVertices);
          for (int i = 0; i < v2v.Size(); i++)
          {
@@ -4139,7 +4112,6 @@ void Mesh::ReadGmshmsh41(std::istream &input, int &curved, int &read_gf)
       VectorGridFunctionCoefficient NodesCoef(&Nodes_gf);
       Nodes->ProjectCoefficient(NodesCoef);
    }
-
 
 }
 
