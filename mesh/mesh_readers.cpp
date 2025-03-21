@@ -3054,8 +3054,6 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   int type_of_element; // ID describing a type of a mesh element
 	   int n_tags; // number of different tags describing an element
 	   int phys_domain; // element's attribute
-	   int elem_domain; // another element's attribute (rarely used)
-	   int n_partitions; // number of partitions where an element takes place
 	   // number of nodes for each type of Gmsh elements, type is the index of
 	   // the array + 1
 	   int num_of_all_elements;
@@ -3354,75 +3352,46 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   int num_of_block_elements, minTagElement, maxTagElement;
 	   int DimEntity, Tag, TagEntity, nb_Elements;
 	   input >> num_of_block_elements >> num_of_all_elements >> minTagElement >> maxTagElement;
-	   //cout << "nb de blocks = " << num_of_block_elements << endl;
-	   //cout	<< "All nb de blocks = " << num_of_all_elements << endl;
-	   //cout << "Min tag = " << minTagElement << endl;
-	   //cout << "Max tag = " << maxTagElement << endl;
 	   for (int bk = 0; bk < num_of_block_elements; ++bk)
 	     {
 	       input >> DimEntity >> TagEntity >> type_of_element >> nb_Elements;
 
 	       for (int el = 0; el < nb_Elements; ++el)
 		 {
-		   input >> n_tags;
-		   n_tags =  TagEntity;
+		   int no_elt;
+		   input >> no_elt;
 	
-		   vector<int> data;
+		   vector<int> *data = NULL;
 
 		   if (DimEntity == 0) {
-		     n_tags = entites_tab_array[TagEntity].PointsGPhysical.size();
-		     data.resize(n_tags);
-		     data = entites_tab_array[TagEntity].PointsGPhysical;
+		     data = &(entites_tab_array[TagEntity].PointsGPhysical);
 		   }
 
 		   if (DimEntity == 1) {
-		     n_tags = entites_tab_array[TagEntity].CurvesGPhysical.size();
-		     data.resize(n_tags);
-		     data = entites_tab_array[TagEntity].CurvesGPhysical;
+		     data = &(entites_tab_array[TagEntity].CurvesGPhysical);
 		   }
 
 		   if (DimEntity == 2) {
-		     n_tags = entites_tab_array[TagEntity].SurfacesGPhysical.size();
-		     data.resize(n_tags);
-		     data = entites_tab_array[TagEntity].SurfacesGPhysical;
+		     data = &(entites_tab_array[TagEntity].SurfacesGPhysical);
 		   }
 
 		   if (DimEntity == 3) {
-		     n_tags = entites_tab_array[TagEntity].VolumesGPhysical.size();
-		     data.resize(n_tags);
-		     data = entites_tab_array[TagEntity].VolumesGPhysical;
+		     data = &(entites_tab_array[TagEntity].VolumesGPhysical);
 		   }
 
-		   
-		   elem_domain = TagEntity;
-		   
-		   if( n_tags == 0 ) {
-		     phys_domain = 1;
-		     n_tags = 1;
+		   if( data == NULL ) {
+		     MFEM_ABORT("Unknown element dimension");
 		   }
-		   int k = 0;
-		   // cout << "n_tags = " << n_tags << endl;
-		     // for (int i = 0; i < n_tags; ++i) { input >> data[i]; }
-		     // physical domain - the most important value (to distinguish
-		     // materials with different properties)
-		     //  phys_domain = (n_tags > 0) ? data[0] : 1;
-		     // elementary domain - to distinguish different geometrical
-		     // domains (typically, it's used rarely)
-		     //elem_domain = (n_tags > 1) ? data[1] : 0;
-		     // the number of tags is bigger than 2 if there are some
-		     // partitions (domain decompositions)
-		     // n_partitions = (n_tags > 2) ? data[2] : 0;
-		   // we currently just skip the partitions if they exist, and go
-		   // directly to vertices describing the mesh element
 
+		   if( (*data).size() < 1 ) {
+		     MFEM_ABORT("Unknown element dimension");
+		   }
 		   
 		   const int n_elem_nodes = nodes_of_gmsh_element[type_of_element-1];
-		   //cout << "type_of_element : " << type_of_element << endl;
-		   // cout << "Nombre de sommets par elements : " << n_elem_nodes << endl;
 		   vector<int> vert_indices(n_elem_nodes);
-		   int index;
 		   for (int vi = 0; vi < n_elem_nodes; ++vi)
 		     {
+		       int index;
 		       input >> index;
 		       map<int, int>::const_iterator it = vertices_map.find(index);
 		       if (it == vertices_map.end())
@@ -3431,14 +3400,11 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 			 }
 		       vert_indices[vi] = it->second;
 		     }
-		   k=0;
 
-		   while (k < n_tags ) {
-		     if ( data.size() > 0 ) phys_domain = data[k];
-		     k = k + 1;  
+		   int k=0;
+		   phys_domain = (*data)[k];
+		   cout << "Dim" << DimEntity << " data[k] " << phys_domain << endl;
 	     
-		     for (int i =0; i < n_elem_nodes; ++i){
-		     }
 		    
 		     // Non-positive attributes are not allowed in MFEM. However,
 		     // by default, Gmsh sets the physical domain of all elements
@@ -3446,14 +3412,14 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 		     // zero, we will given them attribute 1. If only some elements
 		     // have physical domain zero, we will throw an error.
 		   if (phys_domain <= 0)
-		     {
-		       has_nonpositive_phys_domain = true;
-		       phys_domain = 1;
-		     }
+		   { 
+		      has_nonpositive_phys_domain = true;
+		      phys_domain = 1;
+		   }
 		   else
-		     {
+		   {
 		       has_positive_phys_domain = true;
-		     }
+		   }
 
 		   // initialize the mesh element
 		   int el_order = 11;
@@ -3631,7 +3597,6 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 		       break;
 
 		     }  // switch (type_of_element)
-		   }
 		 } // el (all elements)
 	       
 	     }
@@ -3896,11 +3861,6 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
             if (ho_pyr[ord] != NULL) { delete [] ho_pyr[ord]; }
          }
 
-         // Suppress warnings (MFEM_CONTRACT_VAR does not work here with nvcc):
-         ++n_partitions;
-         ++elem_domain;
-         MFEM_CONTRACT_VAR(n_partitions);
-         MFEM_CONTRACT_VAR(elem_domain);
 
 
 
