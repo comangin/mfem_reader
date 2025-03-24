@@ -2910,13 +2910,11 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
    real_t bb_max[3];
  
    int mesh_order = 1;
- 
    bool periodic = false;
 
    GridFunction Nodes_gf;
 
    int NumPoints, NumCurves, NumSurfaces, NumVolumes;
-
    while (input >> buff)
      {
         if (buff == "$Nodes") // reading mesh vertices
@@ -2985,23 +2983,20 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   if (count_vertex =! NumOfVertices) cerr << "error read vertices" << endl;
 	   
 	 }// section '$Nodes'
-       else if (buff == "$Entities")
+	else if (buff == "$Entities") //Entities section is optional
 	 {
 	   int tag,tag_i;
-	   size_t n_tags;
+	   size_t n_tags, n_bnd;
 	   double xmin,ymin,zmin,xmax,ymax,zmax;
 	   
 	   getline(input, buff);
 	   input >> NumPoints >> NumCurves >> NumSurfaces >> NumVolumes;
-	   //	   entites_tab_array.resize(NumPoints+NumCurves+NumSurfaces+NumVolumes);
+
 
 	   for (int i = 0; i < NumPoints; ++i) {
 	     input >> tag >> xmax >> ymax >> zmax >> n_tags;
-
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       // if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
-	       //entites_tab_array[tag].PointsGPhysical.push_back(tag_i);
 	       PointsGPhysical[tag].push_back(tag_i);
 	     }
 	   }
@@ -3010,47 +3005,38 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	     input >> tag >> xmin >> ymin >> zmin >> xmax >> ymax >> zmax >> n_tags;
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-//	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
-//	       entites_tab_array[tag].CurvesGPhysical.push_back(tag_i);
 	       CurvesGPhysical[tag].push_back(tag_i);
-
 	     }
-	     input >> n_tags;
-	     for (int k = 0; k < n_tags; ++k) {
+	     input >> n_bnd;
+	     for (int k = 0; k < n_bnd; ++k) {
 	       input >> tag_i;
              }
 	   }
 
 	   for (int i = 0; i < NumSurfaces; ++i) {
 	     input >> tag >> xmin >> ymin >> zmin >> xmax >> ymax >> zmax >> n_tags;
-
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       //	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
-	       //	       entites_tab_array[tag].SurfacesGPhysical.push_back(tag_i);
 	       SurfacesGPhysical[tag].push_back(tag_i);
 	     }
-	   
-	     input >> n_tags;
-	     for (int k = 0; k < n_tags; ++k) {
-               input >> tag_i;
+	     input >> n_bnd;
+	     for (int k = 0; k < n_bnd; ++k) {
+	       input >> tag_i;
              }
 	   }
 
 	   for (int i = 0; i < NumVolumes; ++i) {
 	     input >> tag >> xmin >> ymin >> zmin >> xmax >> ymax >> zmax >> n_tags;
-
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-//	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
-//	       entites_tab_array[tag].VolumesGPhysical.push_back(tag_i);
 	       VolumesGPhysical[tag].push_back(tag_i);
 	     }
-	     input >> n_tags;
-	     for (int k = 0; k < n_tags; ++k) {
-               input >> tag_i;
+	     input >> n_bnd;
+	     for (int k = 0; k < n_bnd; ++k) {
+	       input >> tag_i;
              }
 	   }
+
 	 }
       else if (buff == "$Elements")
          {
@@ -3058,6 +3044,8 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   int type_of_element; // ID describing a type of a mesh element
 	   int n_tags; // number of different tags describing an element
 	   int phys_domain; // element's attribute
+	   int elem_domain = 0; // another element's attribute (rarely used)
+	   int n_partitions = 0; // number of partitions where an element takes place
 	   // number of nodes for each type of Gmsh elements, type is the index of
 	   // the array + 1
 	   int num_of_all_elements;
@@ -3355,11 +3343,15 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   
 	   int num_of_block_elements, minTagElement, maxTagElement;
 	   int DimEntity, Tag, TagEntity, nb_Elements, totelt;
+
+
 	   input >> num_of_block_elements >> num_of_all_elements >> minTagElement >> maxTagElement;
 	   totelt = 0;
 	   for (int bk = 0; bk < num_of_block_elements; ++bk)
 	     {
 	       input >> DimEntity >> TagEntity >> type_of_element >> nb_Elements;
+	       const int n_elem_nodes = nodes_of_gmsh_element[type_of_element-1];
+	       vector<int> vert_indices(n_elem_nodes);
 
 	       for (int el = 0; el < nb_Elements; ++el, ++totelt)
 		 {
@@ -3384,17 +3376,6 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 		     data = &(VolumesGPhysical);
 		   }
 
-		   if( data == NULL ) {
-		     MFEM_ABORT("Unknown element dimension");
-		   }
-
-		   if( (*data).size() < 1 ) {
-		     MFEM_ABORT("Internal problem related to $Entities section read");
-		   }
-		   
-		   cout << "elt: " << totelt << " ";
-		   const int n_elem_nodes = nodes_of_gmsh_element[type_of_element-1];
-		   vector<int> vert_indices(n_elem_nodes);
 		   for (int vi = 0; vi < n_elem_nodes; ++vi)
 		     {
 		       int index;
@@ -3405,18 +3386,20 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 			   MFEM_ABORT("Gmsh file : vertex index doesn't exist");
 			 }
 		       vert_indices[vi] = it->second;
-		       cout << "v: " << index << " st: " << it->second << " ";
 		     }
 
-		   int k=0;
-		   phys_domain = ((*data)[TagEntity])[k];
-		   cout << "Dim" << DimEntity << " phystag " << phys_domain << endl;
+		   phys_domain = 0;
+		   if( (*data).size() > 0 ) {
+		     if( ((*data)[TagEntity]).size() > 0 ) {
+		       phys_domain = ((*data)[TagEntity])[0];
+		     }
+		   }
 	     
-		     // Non-positive attributes are not allowed in MFEM. However,
-		     // by default, Gmsh sets the physical domain of all elements
-		     // to zero. In the case that all elements have physical domain
-		     // zero, we will given them attribute 1. If only some elements
-		     // have physical domain zero, we will throw an error.
+		   // Non-positive attributes are not allowed in MFEM. However,
+		   // by default, Gmsh sets the physical domain of all elements
+		   // to zero. In the case that all elements have physical domain
+		   // zero, we will given them attribute 1. If only some elements
+		   // have physical domain zero, we will throw an error.
 		   if (phys_domain <= 0)
 		   { 
 		      has_nonpositive_phys_domain = true;
@@ -3628,13 +3611,13 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
          if (!elements_3D.empty())
          {
             Dim = 3;
-            NumOfElements = static_cast<int>(elements_3D.size());
+            NumOfElements = (elements_3D.size());
             elements.SetSize(NumOfElements);
             for (int el = 0; el < NumOfElements; ++el)
             {
                elements[el] = elements_3D[el];
             }
-            NumOfBdrElements = static_cast<int>(elements_2D.size());
+            NumOfBdrElements = (elements_2D.size());
             boundary.SetSize(NumOfBdrElements);
             for (int el = 0; el < NumOfBdrElements; ++el)
             {
@@ -3868,12 +3851,46 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
          }
 
 
-
-
+         ++n_partitions;
+         ++elem_domain;
+         MFEM_CONTRACT_VAR(n_partitions);
+         MFEM_CONTRACT_VAR(elem_domain);
 	   
 	 }
-	  else if (buff == "$Periodic") // Reading master/slave node pairs
-      {
+      else if (buff == "$PhysicalNames") // Named element sets
+	 {
+	   int num_names = 0;
+	   int mdim,num;
+	   string name;
+	   input >> num_names;
+	   for (int i=0; i < num_names; i++)
+	     {
+	       input >> mdim >> num;
+	       getline(input, name);
+
+	       // Trim leading white space
+	       while (!name.empty() &&
+		      (*name.begin() == ' ' || *name.begin() == '\t'))
+		 { name.erase(0,1);}
+
+	       // Trim trailing white space
+	       while (!name.empty() &&
+		      (*name.rbegin() == ' ' || *name.rbegin() == '\t' ||
+		       *name.rbegin() == '\n' || *name.rbegin() == '\r'))
+		 { name.resize(name.length()-1);}
+
+	       // Remove enclosing quotes
+	       if ( (*name.begin() == '"' || *name.begin() == '\'') &&
+		    (*name.rbegin() == '"' || *name.rbegin() == '\''))
+		 {
+		   name = name.substr(1,name.length()-2);
+		 }
+
+	       phys_names_by_dim[mdim][num] = name;
+	     }
+	 }
+      else if (buff == "$Periodic") // Reading master/slave node pairs
+	{
          curved = 1;
          read_gf = 0;
          periodic = true;
@@ -3965,39 +3982,7 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
          }
       }
 
-       else if (buff == "$PhysicalNames") // Named element sets
-	 {
-	   int num_names = 0;
-	   int mdim,num;
-	   string name;
-	   input >> num_names;
-	   for (int i=0; i < num_names; i++)
-	     {
-	       input >> mdim >> num;
-	       getline(input, name);
 
-	       // Trim leading white space
-	       while (!name.empty() &&
-		      (*name.begin() == ' ' || *name.begin() == '\t'))
-		 { name.erase(0,1);}
-
-	       // Trim trailing white space
-	       while (!name.empty() &&
-		      (*name.rbegin() == ' ' || *name.rbegin() == '\t' ||
-		       *name.rbegin() == '\n' || *name.rbegin() == '\r'))
-		 { name.resize(name.length()-1);}
-
-	       // Remove enclosing quotes
-	       if ( (*name.begin() == '"' || *name.begin() == '\'') &&
-		    (*name.rbegin() == '"' || *name.rbegin() == '\''))
-		 {
-		   name = name.substr(1,name.length()-2);
-		 }
-
-	       phys_names_by_dim[mdim][num] = name;
-	     }
-	 }
-   
      }
       // Process set names
    if (phys_names_by_dim.size() > 0)
