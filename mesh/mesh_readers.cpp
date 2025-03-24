@@ -3384,7 +3384,7 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 		   }
 
 		   if( (*data).size() < 1 ) {
-		     MFEM_ABORT("Unknown element dimension");
+		     MFEM_ABORT("Internal problem related to $Entities section read");
 		   }
 		   
 		   const int n_elem_nodes = nodes_of_gmsh_element[type_of_element-1];
