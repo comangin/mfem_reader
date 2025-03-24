@@ -2878,11 +2878,8 @@ void Mesh::ReadGmshFormat22(std::istream &input, int &curved, int &read_gf)
 void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 {
    string buff;
-   real_t version;
    int binary, dsize;
-   input.clear();            
-   input.seekg(12, ios::beg); 
-   input >> version >> binary >> dsize;
+   input >> binary >> dsize;
    if (binary == 1)
    {
       MFEM_ABORT("Gmsh4.1 format is supported nonly in ASCII format, not in binary format");
@@ -2914,7 +2911,6 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 
    GridFunction Nodes_gf;
 
-   int NumPoints, NumCurves, NumSurfaces, NumVolumes;
    while (input >> buff)
      {
         if (buff == "$Nodes") // reading mesh vertices
@@ -2924,15 +2920,11 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   int serial_number; 
 	   int tag;
 	   int spaceDim;
-	   int count_vertex =0;
+	   int count_vertex = 0;
 	   const int gmsh_dim = 3; // Gmsh always outputs 3 coordinates
 	   int DimEntity, TagEntity, NumVertPerBlock, par;
 	   real_t coord[gmsh_dim];
 
-	   struct Coordonate {
-	     real_t coords[3];
-	   };
-	   
 	   input >> NumOfEntities;
 	   input >> NumOfVertices >> MinTagV >> MaxTagV;
 	   getline(input, buff);
@@ -2980,7 +2972,10 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	       spaceDim++;
 	     }
 	   
-	   if (count_vertex =! NumOfVertices) cerr << "error read vertices" << endl;
+	   if (count_vertex != NumOfVertices)
+	     {
+	       MFEM_ABORT("Gmsh file : vertices indices are not unique");
+	     }
 	   
 	 }// section '$Nodes'
 	else if (buff == "$Entities") //Entities section is optional
@@ -2988,6 +2983,7 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   int tag,tag_i;
 	   size_t n_tags, n_bnd;
 	   double xmin,ymin,zmin,xmax,ymax,zmax;
+	   int NumPoints, NumCurves, NumSurfaces, NumVolumes;
 	   
 	   getline(input, buff);
 	   input >> NumPoints >> NumCurves >> NumSurfaces >> NumVolumes;
@@ -3040,15 +3036,19 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	 }
       else if (buff == "$Elements")
          {
+	   int num_of_all_elements;
+	   int num_of_block_elements, minTagElement, maxTagElement;
+	   input >> num_of_block_elements >> num_of_all_elements >> minTagElement >> maxTagElement;
+
 	   int serial_number; // serial number of an element
 	   int type_of_element; // ID describing a type of a mesh element
 	   int n_tags; // number of different tags describing an element
 	   int phys_domain; // element's attribute
 	   int elem_domain = 0; // another element's attribute (rarely used)
 	   int n_partitions = 0; // number of partitions where an element takes place
+
 	   // number of nodes for each type of Gmsh elements, type is the index of
 	   // the array + 1
-	   int num_of_all_elements;
 	   int nodes_of_gmsh_element[] =
 	     {
 	      2,   // 2-node line.
@@ -3341,11 +3341,8 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   bool has_nonpositive_phys_domain = false;
 	   bool has_positive_phys_domain = false;
 	   
-	   int num_of_block_elements, minTagElement, maxTagElement;
 	   int DimEntity, Tag, TagEntity, nb_Elements, totelt;
 
-
-	   input >> num_of_block_elements >> num_of_all_elements >> minTagElement >> maxTagElement;
 	   totelt = 0;
 	   for (int bk = 0; bk < num_of_block_elements; ++bk)
 	     {
@@ -3980,9 +3977,9 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
                v[j] = v2v[v[j]];
             }
          }
-      }
-
-
+	}
+	
+	
      }
       // Process set names
    if (phys_names_by_dim.size() > 0)
