@@ -2893,13 +2893,13 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
    }
    getline(input, buff);
 
-   struct entites_tab {
-     int num_physical_by_entites;
-     vector <int> PointsGPhysical;
-     vector <int> CurvesGPhysical;
-     vector <int> SurfacesGPhysical;
-     vector <int> VolumesGPhysical;
-   };
+   typedef std::vector<int> Vectint_;
+   typedef std::map<int, Vectint_> Vectintmap_;
+
+   Vectintmap_ PointsGPhysical;
+   Vectintmap_ CurvesGPhysical;
+   Vectintmap_ SurfacesGPhysical;
+   Vectintmap_ VolumesGPhysical;
    
    map<int, int> vertices_map;
  
@@ -2916,7 +2916,6 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
    GridFunction Nodes_gf;
 
    int NumPoints, NumCurves, NumSurfaces, NumVolumes;
-   vector<entites_tab> entites_tab_array;
 
    while (input >> buff)
      {
@@ -2994,15 +2993,16 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   
 	   getline(input, buff);
 	   input >> NumPoints >> NumCurves >> NumSurfaces >> NumVolumes;
-	   entites_tab_array.resize(NumPoints+NumCurves+NumSurfaces+NumVolumes);
+	   //	   entites_tab_array.resize(NumPoints+NumCurves+NumSurfaces+NumVolumes);
 
 	   for (int i = 0; i < NumPoints; ++i) {
 	     input >> tag >> xmax >> ymax >> zmax >> n_tags;
 
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
-	       entites_tab_array[tag].PointsGPhysical.push_back(tag_i);
+	       // if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
+	       //entites_tab_array[tag].PointsGPhysical.push_back(tag_i);
+	       PointsGPhysical[tag].push_back(tag_i);
 	     }
 	   }
 
@@ -3010,8 +3010,10 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	     input >> tag >> xmin >> ymin >> zmin >> xmax >> ymax >> zmax >> n_tags;
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
-	       entites_tab_array[tag].CurvesGPhysical.push_back(tag_i);
+//	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
+//	       entites_tab_array[tag].CurvesGPhysical.push_back(tag_i);
+	       CurvesGPhysical[tag].push_back(tag_i);
+
 	     }
 	     input >> n_tags;
 	     for (int k = 0; k < n_tags; ++k) {
@@ -3024,8 +3026,9 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
-	       entites_tab_array[tag].SurfacesGPhysical.push_back(tag_i);
+	       //	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
+	       //	       entites_tab_array[tag].SurfacesGPhysical.push_back(tag_i);
+	       SurfacesGPhysical[tag].push_back(tag_i);
 	     }
 	   
 	     input >> n_tags;
@@ -3039,8 +3042,9 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 
 	     for (int j = 0; j < n_tags; ++j) {
 	       input >> tag_i;
-	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
-	       entites_tab_array[tag].VolumesGPhysical.push_back(tag_i);
+//	       if (entites_tab_array.size() <= tag) entites_tab_array.resize(tag + 1);
+//	       entites_tab_array[tag].VolumesGPhysical.push_back(tag_i);
+	       VolumesGPhysical[tag].push_back(tag_i);
 	     }
 	     input >> n_tags;
 	     for (int k = 0; k < n_tags; ++k) {
@@ -3350,33 +3354,34 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 	   bool has_positive_phys_domain = false;
 	   
 	   int num_of_block_elements, minTagElement, maxTagElement;
-	   int DimEntity, Tag, TagEntity, nb_Elements;
+	   int DimEntity, Tag, TagEntity, nb_Elements, totelt;
 	   input >> num_of_block_elements >> num_of_all_elements >> minTagElement >> maxTagElement;
+	   totelt = 0;
 	   for (int bk = 0; bk < num_of_block_elements; ++bk)
 	     {
 	       input >> DimEntity >> TagEntity >> type_of_element >> nb_Elements;
 
-	       for (int el = 0; el < nb_Elements; ++el)
+	       for (int el = 0; el < nb_Elements; ++el, ++totelt)
 		 {
 		   int no_elt;
 		   input >> no_elt;
 	
-		   vector<int> *data = NULL;
+		   Vectintmap_ *data = NULL;
 
 		   if (DimEntity == 0) {
-		     data = &(entites_tab_array[TagEntity].PointsGPhysical);
+		     data = &(PointsGPhysical);
 		   }
 
 		   if (DimEntity == 1) {
-		     data = &(entites_tab_array[TagEntity].CurvesGPhysical);
+		     data = &(CurvesGPhysical);
 		   }
 
 		   if (DimEntity == 2) {
-		     data = &(entites_tab_array[TagEntity].SurfacesGPhysical);
+		     data = &(SurfacesGPhysical);
 		   }
 
 		   if (DimEntity == 3) {
-		     data = &(entites_tab_array[TagEntity].VolumesGPhysical);
+		     data = &(VolumesGPhysical);
 		   }
 
 		   if( data == NULL ) {
@@ -3387,6 +3392,7 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 		     MFEM_ABORT("Internal problem related to $Entities section read");
 		   }
 		   
+		   cout << "elt: " << totelt << " ";
 		   const int n_elem_nodes = nodes_of_gmsh_element[type_of_element-1];
 		   vector<int> vert_indices(n_elem_nodes);
 		   for (int vi = 0; vi < n_elem_nodes; ++vi)
@@ -3399,13 +3405,13 @@ void Mesh::ReadGmshFormat41(std::istream &input, int &curved, int &read_gf)
 			   MFEM_ABORT("Gmsh file : vertex index doesn't exist");
 			 }
 		       vert_indices[vi] = it->second;
+		       cout << "v: " << index << " st: " << it->second << " ";
 		     }
 
 		   int k=0;
-		   phys_domain = (*data)[k];
-		   cout << "Dim" << DimEntity << " data[k] " << phys_domain << endl;
+		   phys_domain = ((*data)[TagEntity])[k];
+		   cout << "Dim" << DimEntity << " phystag " << phys_domain << endl;
 	     
-		    
 		     // Non-positive attributes are not allowed in MFEM. However,
 		     // by default, Gmsh sets the physical domain of all elements
 		     // to zero. In the case that all elements have physical domain
