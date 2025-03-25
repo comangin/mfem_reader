@@ -60,13 +60,13 @@ namespace mfem
     DMDestroy(&dm);
     PetscFinalize();
 
-    // if (finalize_topo)
-    // {
-    //    // don't generate any boundary elements, especially in parallel
-    //    bool generate_bdr = false;
+    if (finalize_topo)
+      {
+	// don't generate any boundary elements, especially in parallel
+	bool generate_bdr = false;
 
-    //    FinalizeTopology(generate_bdr);
-    // }
+	FinalizeTopology(generate_bdr);
+      }
 
     // if (curved && read_gf)
     // {
@@ -165,6 +165,8 @@ namespace mfem
       PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
     }
 
+
+
     DMPolytopeType celltype;
     PetscBool hasLabel;
   
@@ -197,7 +199,7 @@ namespace mfem
 
       for (PetscInt j = 0; j < Nv; ++j) {
     	cout << vertex_tetra[j]-numCellsEnd+1 << " ";
-	vertex_tetra[j]=vertex_tetra[j]-numCellsEnd+1;
+	vertex_tetra[j]=vertex_tetra[j]-numCellsEnd;
       }
 
       // Physical Group
@@ -218,6 +220,7 @@ namespace mfem
       switch (celltype)
       	{
       	case 0:
+	  elements[i]=new Point(&vertex_tetra[0],celltype);
       	  break;
 
       	case 1:
@@ -233,7 +236,7 @@ namespace mfem
       	  break;
 
       	case 4:
-      	  // Handle QUADRILATERAL case
+      	  elements[i]=new Quadrilateral(&vertex_tetra[0],celltype);
       	  break;
 
       	case 5:
@@ -297,8 +300,14 @@ namespace mfem
       PetscPrintf(PETSC_COMM_WORLD, "\n");
     }
 
+    this->FinalizeTopology();
+    this->RemoveUnusedVertices();
     DMView(dm, PETSC_VIEWER_STDOUT_WORLD);
     PrintInfo();
+
+
+    std::ofstream ostream("output_mesh.vtk");
+    PrintVTK(ostream);
     
     // WRITE MESH TO .MESH MFEM 
     ofstream mesh_ofs("output_mesh.mesh");

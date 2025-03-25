@@ -161,6 +161,7 @@ void Mesh::ReadMFEMMesh(std::istream &input, int version, int &curved)
    // When visualizing solutions on non-conforming grids, PETSc
    // may dump additional vertices
    if (remove_unused_vertices) { RemoveUnusedVertices(); }
+
 }
 
 void Mesh::ReadLineMesh(std::istream &input)
@@ -2576,10 +2577,11 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
             }
          }
          else
-         {
-            MFEM_ABORT("Gmsh file : no elements found");
-            return;
-         }
+	   {
+	     MFEM_ABORT("Gmsh file : no elements found");
+	     return;
+	   }
+	 
 
          if (mesh_order > 1)
          {
@@ -2749,6 +2751,9 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
          MFEM_CONTRACT_VAR(n_partitions);
          MFEM_CONTRACT_VAR(elem_domain);
 
+
+
+
       } // section '$Elements'
       else if (buff == "$PhysicalNames") // Named element sets
       {
@@ -2901,19 +2906,19 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
       for (auto const &attr : phys_names_by_dim[Dim])
       {
          if (!attribute_sets.AttributeSetExists(attr.second))
-         {
-            attribute_sets.CreateAttributeSet(attr.second);
-         }
+	   {
+	     attribute_sets.CreateAttributeSet(attr.second);
+	   }
          attribute_sets.AddToAttributeSet(attr.second, attr.first);
       }
    }
-
+   
    this->RemoveUnusedVertices();
    if (periodic)
-   {
-      this->RemoveInternalBoundaries();
-   }
-   this->FinalizeTopology();
+     {
+       this->RemoveInternalBoundaries();
+     }
+
 
    // If a high order coordinate field was created project it onto the mesh
    if (mesh_order > 1)
