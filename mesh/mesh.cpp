@@ -6758,10 +6758,12 @@ int Mesh::CheckBdrElementOrientation(bool fix_it)
       }
       for (int i = 0; i < NumOfBdrElements; i++)
       {
-         if (faces_info[be_to_face[i]].Elem2No < 0) // boundary face
+         const int btf = be_to_face[i];
+         MFEM_VERIFY(btf > 0,"INTERNAL ERROR GetElementToEdgeTable");
+         if (faces_info[btf].Elem2No < 0) // boundary face
          {
             int *bv = boundary[i]->GetVertices();
-            int *fv = faces[be_to_face[i]]->GetVertices();
+            int *fv = faces[btf]->GetVertices();
             if (bv[0] != fv[0])
             {
                if (fix_it)
@@ -7478,7 +7480,6 @@ int Mesh::GetElementToEdgeTable(Table &e_to_f)
       {
          const int *v = boundary[i]->GetVertices();
          const int vtov = v_to_v(v[0], v[1]);
-         MFEM_VERIFY(vtov > 0,"INTERNAL ERROR GetElementToEdgeTable");
          be_to_face[i] =  vtov;
       }
    }
