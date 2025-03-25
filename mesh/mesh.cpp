@@ -7477,7 +7477,9 @@ int Mesh::GetElementToEdgeTable(Table &e_to_f)
       for (i = 0; i < NumOfBdrElements; i++)
       {
          const int *v = boundary[i]->GetVertices();
-         be_to_face[i] = v_to_v(v[0], v[1]);
+         const int vtov = v_to_v(v[0], v[1]);
+         MFEM_VERIFY(vtov > 0,"INTERNAL ERROR GetElementToEdgeTable");
+         be_to_face[i] =  vtov;
       }
    }
    else if (Dim == 3)
@@ -7678,12 +7680,11 @@ void Mesh::AddQuadFaceElement(int lf, int gf, int el,
 void Mesh::GenerateFaces()
 {
    int nfaces = GetNumFaces();
-
    for (auto &f : faces)
    {
       FreeElement(f);
    }
-
+   
    // (re)generate the interior faces and the info for them
    faces.SetSize(nfaces);
    faces_info.SetSize(nfaces);
