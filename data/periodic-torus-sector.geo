@@ -128,7 +128,7 @@ Physical Volume(1) = {1,2,3,4,5};
 // Generate 3D mesh
 Mesh 3;
 SetOrder order;
-Mesh.MshFileVersion = 2.2;
+//Mesh.MshFileVersion = 2.2;
 
 // Check the element quality (the Plugin may be called AnalyseCurvedMesh)
 // Plugin(AnalyseMeshQuality).JacobianDeterminant = 1;

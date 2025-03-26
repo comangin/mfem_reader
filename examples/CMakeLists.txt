@@ -46,12 +46,14 @@ list(APPEND ALL_EXE_SRCS
   ex38.cpp
   ex39.cpp
   ex40.cpp
+  inclusions.cpp
   )
 
 if (MFEM_USE_MPI)
   list(APPEND ALL_EXE_SRCS
     ex0p.cpp
     ex1p.cpp
+    ex1p_split.cpp
     ex2p.cpp
     ex3p.cpp
     ex4p.cpp
