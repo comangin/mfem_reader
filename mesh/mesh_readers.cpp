@@ -1640,13 +1640,14 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
         if (iversion == 41)
         {
           int DimEntity, NumOfEntities, TagEntity, MinTagV, MaxTagV;
-          int NumVertPerBlock, par, tag;
+          int NumVertPerBlock, parametric, tag, ScanParametric = 0;
           input >> NumOfEntities >>NumOfVertices >> MinTagV >> MaxTagV;
           getline(input, buff);
           vertices.SetSize(NumOfVertices);
           for (int i = 0, ver = 0; i < NumOfEntities; i = i + 1)
             { 
-              input >> DimEntity >> TagEntity >> par >> NumVertPerBlock;
+              input >> DimEntity >> TagEntity >> parametric >> NumVertPerBlock;
+	      ScanParametric = parametric | ScanParametric;
               std::vector<int> index(NumVertPerBlock);
               for (int j = 0; j < NumVertPerBlock; j = j + 1)
                 {
@@ -1671,6 +1672,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                   ver++;
                 }
             }
+	  MFEM_VERIFY(ScanParametric == 0, "Parametric nodes is not allowed in the GMSH reader");
         }
          real_t bb_size = std::max(bb_max[0] - bb_min[0],
                                    std::max(bb_max[1] - bb_min[1],
@@ -1690,7 +1692,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
             MFEM_ABORT("Gmsh file : vertices indices are not unique");
          }
       } // section '$Nodes'
-      else if (buff == "$Entities") //Entities section is optional
+      else if (buff == "$Entities") //Entities section is optional and related to format 4.1
       {
            int tag,tag_i;
            size_t n_tags, n_bnd;
@@ -1746,6 +1748,82 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                input >> tag_i;
              }
            }
+      }
+      else if (buff == "$PartitionedEntities") //PartitionedEntities section is optional and related to format 4.1
+      {
+	int tag, tag_i, pdim, ptag, n_parts;
+	int phystag, partid;
+	size_t n_tags, n_bnd;
+	double xmin,ymin,zmin,xmax,ymax,zmax;
+	int NumParts, NumGhosts;
+	int NumPoints, NumCurves, NumSurfaces, NumVolumes;
+        
+	getline(input, buff);
+	input >> NumParts;
+	input >> NumGhosts;
+	for (int i = 0; i < NumGhosts; ++i) {
+	  int EntityTag;
+	  input >> EntityTag >> partid;
+	}
+	input >> NumPoints >> NumCurves >> NumSurfaces >> NumVolumes;
+	for (int i = 0; i < NumPoints; ++i) {
+	  input >> tag >> pdim >> ptag >> n_parts;
+	  for (int j = 0; j < n_parts; ++j) {
+	    input >> partid;
+	  }
+	  input >> xmax >> ymax >> zmax >> n_tags;
+	  for (int j = 0; j < n_tags; ++j) {
+	    input >> phystag;
+	  }
+	}
+
+	for (int i = 0; i < NumCurves; ++i) {
+	  input >> tag >> pdim >> ptag >> n_parts;
+	  for (int j = 0; j < n_parts; ++j) {
+	    input >> partid;
+	  }
+	  input >> xmin >> ymin >> zmin >>	\
+	    xmax >> ymax >> zmax >> n_tags;
+	  for (int j = 0; j < n_tags; ++j) {
+	    input >> tag_i;
+	  }
+	  input >> n_bnd;
+	  for (int k = 0; k < n_bnd; ++k) {
+	    input >> tag_i;
+	  }
+	}
+	
+	for (int i = 0; i < NumSurfaces; ++i) {
+	  input >> tag >> pdim >> ptag >> n_parts;
+	  for (int j = 0; j < n_parts; ++j) {
+	    input >> partid;
+	  }
+	  input >> xmin >> ymin >> zmin >>	\
+	    xmax >> ymax >> zmax >> n_tags;
+	  for (int j = 0; j < n_tags; ++j) {
+	    input >> tag_i;
+	  }
+	  input >> n_bnd;
+	  for (int k = 0; k < n_bnd; ++k) {
+	    input >> tag_i;
+	  }
+	}
+	
+	for (int i = 0; i < NumVolumes; ++i) {
+	  input >> tag >> pdim >> ptag >> n_parts;
+	  for (int j = 0; j < n_parts; ++j) {
+	    input >> partid;
+	  }
+	  input >> xmin >> ymin >> zmin >>	\
+	    xmax >> ymax >> zmax >> n_tags;
+	  for (int j = 0; j < n_tags; ++j) {
+	    input >> tag_i;
+	  }
+	  input >> n_bnd;
+	  for (int k = 0; k < n_bnd; ++k) {
+	    input >> tag_i;
+	  }
+	}
       }
       else if (buff == "$Elements") // reading mesh elements
       {
