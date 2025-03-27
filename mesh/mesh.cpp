@@ -4525,11 +4525,16 @@ void Mesh::SetMeshGen()
 }
 
 void Mesh::Loader(std::istream &input, int generate_edges,
-                  std::string parse_tag)
+                  bool parallel)
 {
    int curved = 0, read_gf = 1;
    bool finalize_topo = true;
+   std::string parse_tag = "";
 
+   if (parallel)
+   {
+     parse_tag = "mfem_serial_mesh_end";
+   }
    if (!input)
    {
       MFEM_ABORT("Input stream is not open");

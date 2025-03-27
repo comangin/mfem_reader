@@ -1592,6 +1592,10 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
    Vectintmap_ CurvesGPhysical;
    Vectintmap_ SurfacesGPhysical;
    Vectintmap_ VolumesGPhysical;
+   Vectintmap_ PointsGPart;
+   Vectintmap_ CurvesGPart;
+   Vectintmap_ SurfacesGPart;
+   Vectintmap_ VolumesGPart;
    // Specific to GMSH 4.1 format (end)
 
    
@@ -1647,7 +1651,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
           for (int i = 0, ver = 0; i < NumOfEntities; i = i + 1)
             { 
               input >> DimEntity >> TagEntity >> parametric >> NumVertPerBlock;
-	      ScanParametric = parametric | ScanParametric;
+	      ScanParametric = parametric || ScanParametric;
               std::vector<int> index(NumVertPerBlock);
               for (int j = 0; j < NumVertPerBlock; j = j + 1)
                 {
@@ -1770,10 +1774,12 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
+	    PointsGPart[tag].push_back(partid);
 	  }
 	  input >> xmax >> ymax >> zmax >> n_tags;
 	  for (int j = 0; j < n_tags; ++j) {
 	    input >> phystag;
+	    PointsGPhysical[tag].push_back(tag_i);
 	  }
 	}
 
@@ -1781,11 +1787,13 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
+	    CurvesGPart[tag].push_back(partid);
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
 	  for (int j = 0; j < n_tags; ++j) {
 	    input >> tag_i;
+	    CurvesGPhysical[tag].push_back(tag_i);
 	  }
 	  input >> n_bnd;
 	  for (int k = 0; k < n_bnd; ++k) {
@@ -1797,11 +1805,13 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
+	    SurfacesGPart[tag].push_back(partid);
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
 	  for (int j = 0; j < n_tags; ++j) {
 	    input >> tag_i;
+	    SurfacesGPhysical[tag].push_back(tag_i);
 	  }
 	  input >> n_bnd;
 	  for (int k = 0; k < n_bnd; ++k) {
@@ -1813,11 +1823,13 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
+	    VolumesGPart[tag].push_back(partid);
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
 	  for (int j = 0; j < n_tags; ++j) {
 	    input >> tag_i;
+	    VolumesGPhysical[tag].push_back(tag_i);
 	  }
 	  input >> n_bnd;
 	  for (int k = 0; k < n_bnd; ++k) {

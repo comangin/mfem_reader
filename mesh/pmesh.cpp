@@ -954,7 +954,7 @@ void ParMesh::Load(istream &input, int generate_edges, int refine,
    // Tell Loader() to read up to 'mfem_serial_mesh_end' instead of
    // 'mfem_mesh_end', as we have additional parallel mesh data to load in from
    // the stream.
-   Loader(input, generate_edges, "mfem_serial_mesh_end");
+   Loader(input, generate_edges, 1);
 
    ReduceMeshGen(); // determine the global 'meshgen'
 
