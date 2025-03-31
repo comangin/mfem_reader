@@ -954,13 +954,14 @@ void ParMesh::Load(istream &input, int generate_edges, int refine,
    // Tell Loader() to read up to 'mfem_serial_mesh_end' instead of
    // 'mfem_mesh_end', as we have additional parallel mesh data to load in from
    // the stream.
-   Loader(input, generate_edges, 1);
+   string mesh_type;
+   Loader(input, mesh_type, generate_edges, 1);
 
    ReduceMeshGen(); // determine the global 'meshgen'
 
    if (Conforming())
    {
-      LoadSharedEntities(input);
+      LoadSharedEntities(input, mesh_type);
    }
    else
    {
@@ -982,7 +983,7 @@ void ParMesh::Load(istream &input, int generate_edges, int refine,
    // TODO: NURBS meshes?
 }
 
-void ParMesh::LoadSharedEntities(istream &input)
+void ParMesh::LoadSharedEntities(istream &input, string &mesh_type)
 {
    string ident;
    skip_comment_lines(input, '#');

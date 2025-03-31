@@ -584,7 +584,7 @@ protected:
    // Used in the methods FinalizeXXXMesh() and FinalizeTopology()
    void FinalizeCheck();
 
-   void Loader(std::istream &input, int generate_edges = 0,
+   void Loader(std::istream &input, std::string &mesh_type, int generate_edges = 0,
                bool parallel = 0);
 
    /** If NURBS mesh, write NURBS format. If NCMesh, write mfem v1.1 format.
@@ -749,7 +749,8 @@ public:
    virtual void Load(std::istream &input, int generate_edges = 0,
                      int refine = 1, bool fix_orientation = true)
    {
-      Loader(input, generate_edges);
+      std::string mesh_type;
+      Loader(input, mesh_type, generate_edges);
       Finalize(refine, fix_orientation);
    }
 

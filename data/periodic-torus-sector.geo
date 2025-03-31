@@ -2,10 +2,10 @@
 periodic = 1;
 
 // Set the geometry order (1, 2, ..., 10 for tetrahedra or 9 for other types)
-order = 1;
+order = 3;
 
 // Set the element type (4 - tetrahedra, 6 - wedges, 8 - hexahedra)
-type = 4;
+type = 8;
 
 // Minor and major radii
 R1 = 1.0;

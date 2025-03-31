@@ -4524,7 +4524,7 @@ void Mesh::SetMeshGen()
    }
 }
 
-void Mesh::Loader(std::istream &input, int generate_edges,
+void Mesh::Loader(std::istream &input, string &mesh_type, int generate_edges,
                   bool parallel)
 {
    int curved = 0, read_gf = 1;
@@ -4542,7 +4542,6 @@ void Mesh::Loader(std::istream &input, int generate_edges,
 
    Clear();
 
-   string mesh_type;
    input >> ws;
    getline(input, mesh_type);
    filter_dos(mesh_type);
