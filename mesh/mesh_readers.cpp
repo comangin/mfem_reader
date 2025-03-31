@@ -1777,6 +1777,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	    PointsGPart[tag].push_back(partid);
 	  }
 	  input >> xmax >> ymax >> zmax >> n_tags;
+	  MFEM_VERIFY(PointsGPhysical[tag].size() == 0, "Internal problem mesh_readers")
 	  for (int j = 0; j < n_tags; ++j) {
 	    input >> phystag;
 	    PointsGPhysical[tag].push_back(tag_i);
@@ -1791,6 +1792,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
+	  MFEM_VERIFY(CurvesGPhysical[tag].size() == 0, "Internal problem mesh_readers")
 	  for (int j = 0; j < n_tags; ++j) {
 	    input >> tag_i;
 	    CurvesGPhysical[tag].push_back(tag_i);
@@ -1809,6 +1811,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
+	  MFEM_VERIFY(SurfacesGPhysical[tag].size() == 0, "Internal problem mesh_readers")
 	  for (int j = 0; j < n_tags; ++j) {
 	    input >> tag_i;
 	    SurfacesGPhysical[tag].push_back(tag_i);
@@ -1827,6 +1830,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
+	  MFEM_VERIFY(VolumesGPhysical[tag].size() == 0, "Internal problem mesh_readers")
 	  for (int j = 0; j < n_tags; ++j) {
 	    input >> tag_i;
 	    VolumesGPhysical[tag].push_back(tag_i);

@@ -1,6 +1,6 @@
 // ~/Softs/gmsh/bin/gmsh -3 -setnumber partitioner 0 -refine  cube-periodic.geo // One single msh file
 // ~/Softs/gmsh/bin/gmsh -3 -setnumber partitioner 1 -refine  cube-periodic.geo // Several partitions and files with METIS partitioner
-periodic = 0;
+periodic = 1;
 ep = 1.;
 mp = 0.5*ep;
 cl = mp/2.1;
@@ -88,7 +88,7 @@ Volume (1) = {1};
 Surface Loop (2) = {2, 3, 6, 7, 8, 9};
 Volume (2) = {2};
 
-Physical Volume(1)  = {1, 2};
+Physical Volume("main", 1)  = {1, 2};
 
 //#For vo In {1:2}
 //#    Physical Volume(vo)  = {vo}; 
@@ -108,7 +108,7 @@ Mesh 3;
 // We now define several constants to fine-tune how the mesh will be partitioned
 // We now define several constants to fine-tune how the mesh will be partitioned
 DefineConstant[
-  partitioner = {1, Choices{0="None", 1="Metis", 2="SimplePartition"},
+  partitioner = {0, Choices{0="None", 1="Metis", 2="SimplePartition"},
     Name "Parameters/0Mesh partitioner"}
   N = {4, Min 1, Max 256, Step 1,
     Name "Parameters/1Number of partitions"}

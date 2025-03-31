@@ -44,8 +44,8 @@ echo compass.msh
 diff -s res22 res41
 cd $MFEM_BUILD_DIR/examples
 echo cubeper.msh
-./ex4 -m ../../data/cubeper22.msh
-./ex4 -m ../../data/cubeper41.msh
-#diff -s res22 res41
+(./ex4 -m ../../data/cubeper22.msh -no-bc | tail -n 10) > res22
+(./ex4 -m ../../data/cubeper41.msh -no-bc | tail -n 10) > res41
+diff -s res22 res41
 
 

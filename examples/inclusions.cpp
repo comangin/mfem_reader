@@ -204,34 +204,38 @@ int main(int argc, char *argv[])
 
    ParMesh *pmesh;
    int dim;
-//   if (!restart)
-//   {
-//     Mesh *mesh = new Mesh(mesh_file, 1, 0);
-//     dim = mesh->Dimension();
-//     
-//     if ( dim == 2 && tcase != 1 && tcase != 2 && tcase != 4 ) {
-//       if (myid == 0)
-//	 cout << "This test case is undefined in 2D" << endl;
-//       MPI_Finalize();
-//       exit(1);
-//     }
-//     if ( dim == 3 && ((tcase < 1) || (tcase > 6))) {
-//       if (myid == 0)
-//	 cout << "This test case is undefined in 3D" << endl;
-//       MPI_Finalize();
-//       exit(1);
-//     }
-//   
-//     pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
-//     delete mesh;
-//   } else {
-   string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
-   ifstream ifs(fname);
-   MFEM_VERIFY(ifs.good(), "Checkpoint file " << fname << " not found.");
-   pmesh = new ParMesh(MPI_COMM_WORLD, ifs);
-   dim = pmesh->Dimension();
-     //   }
+#if 1
+   {
+     Mesh *mesh = new Mesh(mesh_file, 1, 0);
+     dim = mesh->Dimension();
+     
+     pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
+     delete mesh;
+   }
+#else
+   {
+     string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
+     ifstream ifs(fname);
+     MFEM_VERIFY(ifs.good(), "Checkpoint file " << fname << " not found.");
+     pmesh = new ParMesh(MPI_COMM_WORLD, ifs);
+     dim = pmesh->Dimension();
+   }
+#endif
 
+   if ( dim == 2 && tcase != 1 && tcase != 2 && tcase != 4 ) {
+     if (myid == 0)
+       cout << "This test case is undefined in 2D" << endl;
+     MPI_Finalize();
+     exit(1);
+   }
+   if ( dim == 3 && ((tcase < 1) || (tcase > 6))) {
+     if (myid == 0)
+       cout << "This test case is undefined in 3D" << endl;
+     MPI_Finalize();
+     exit(1);
+   }
+
+   
    //    Define a finite element space on the mesh. Here we use vector finite
    //    elements, i.e. dim copies of a scalar finite element space. The vector
    //    dimension is specified by the last argument of the FiniteElementSpace

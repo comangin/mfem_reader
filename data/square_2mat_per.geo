@@ -32,12 +32,12 @@ Physical Line(5) = {5};
 Physical Line(6) = {6};
 Physical Line(7) = {7};
 
-Physical Surface(1) = {1};
-Physical Surface(2) = {2};
+Physical Surface("mat1", 1) = {1};
+Physical Surface("mat2", 2) = {2};
 
-For pt In {1:22}
-    Physical Point(pt)  = {pt}; 
-EndFor
+//For pt In {1:6}
+//    Physical Point(pt)  = {pt}; 
+//EndFor
 
 //Transfinite Surface {1,2};
 //Recombine Surface {1,2};
