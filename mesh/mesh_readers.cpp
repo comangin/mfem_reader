@@ -1539,6 +1539,17 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
    {
       MFEM_ABORT("Gmsh file : dsize != sizeof(double)");
    }
+   gmesh = new GMSHData();
+
+   Vectintmap_ &PointsGPhysical=gmesh->PointsGPhysical;
+   Vectintmap_ &CurvesGPhysical=gmesh->CurvesGPhysical;
+   Vectintmap_ &SurfacesGPhysical=gmesh->SurfacesGPhysical;
+   Vectintmap_ &VolumesGPhysical=gmesh->VolumesGPhysical;
+   Vectintmap_ &PointsGPart=gmesh->PointsGPart;
+   Vectintmap_ &CurvesGPart=gmesh->CurvesGPart;
+   Vectintmap_ &SurfacesGPart=gmesh->SurfacesGPart;
+   Vectintmap_ &VolumesGPart=gmesh->VolumesGPart;
+   
    getline(input, buff);
    // There is a number 1 in binary format
    if (binary)
@@ -1584,21 +1595,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
 
    // Vector field to store uniformly spaced Gmsh high order mesh coords
    GridFunction Nodes_gf;
-
-   // Specific to GMSH 4.1 format (begin)
-   typedef std::vector<int> Vectint_;
-   typedef std::map<int, Vectint_> Vectintmap_;
-   Vectintmap_ PointsGPhysical;
-   Vectintmap_ CurvesGPhysical;
-   Vectintmap_ SurfacesGPhysical;
-   Vectintmap_ VolumesGPhysical;
-   Vectintmap_ PointsGPart;
-   Vectintmap_ CurvesGPart;
-   Vectintmap_ SurfacesGPart;
-   Vectintmap_ VolumesGPart;
-   // Specific to GMSH 4.1 format (end)
-
-   
+  
    // Read the lines of the mesh file. If we face specific keyword, we'll treat
    // the section.
    while (input >> buff)

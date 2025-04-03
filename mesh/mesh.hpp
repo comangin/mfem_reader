@@ -42,6 +42,7 @@ class KnotVector;
 class NURBSExtension;
 class FiniteElementSpace;
 class GridFunction;
+class GMSHData;
 struct Refinement;
 
 /** An enum type to specify if interior or boundary faces are desired. */
@@ -297,10 +298,12 @@ public:
 
    NURBSExtension *NURBSext; ///< Optional NURBS mesh extension.
    NCMesh *ncmesh;           ///< Optional nonconforming mesh extension.
+   GMSHData *gmesh;          ///< Optional GMSH data
    Array<GeometricFactors*> geom_factors; ///< Optional geometric factors.
    Array<FaceGeometricFactors*> face_geom_factors; /**< Optional face geometric
-                                                        factors. */
+                                                       factors. */
 
+  
    // Global parameter that can be used to control the removal of unused
    // vertices performed when reading a mesh in MFEM format. The default value
    // (true) is set in mesh_readers.cpp.
@@ -2696,6 +2699,26 @@ public:
    Mesh &GetMesh();
 };
 
+
+/** @brief Structure for storing information read from GMSH files concerning the mesh. */
+typedef std::vector<int> Vectint_;
+typedef std::map<int, Vectint_> Vectintmap_;
+class GMSHData
+{
+private:
+public:
+      // Specific to GMSH 4.1 format (begin)
+   Vectintmap_ PointsGPhysical;
+   Vectintmap_ CurvesGPhysical;
+   Vectintmap_ SurfacesGPhysical;
+   Vectintmap_ VolumesGPhysical;
+   Vectintmap_ PointsGPart;
+   Vectintmap_ CurvesGPart;
+   Vectintmap_ SurfacesGPart;
+   Vectintmap_ VolumesGPart;
+   // Specific to GMSH 4.1 format (end)
+
+};
 
 /** @brief Class that allows serial meshes to be partitioned into MeshPart
     objects, typically one MeshPart at a time, which can then be used to write

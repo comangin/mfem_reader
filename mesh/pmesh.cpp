@@ -993,7 +993,8 @@ void ParMesh::LoadSharedEntities(istream &input, string &mesh_type)
 
    if (mesh_type == "$MeshFormat") // Gmsh
    {
-     
+
+     // Copy Mesh at some point into Mesh field ? Mesh(pmesh, false)
       cerr << "LINE "<< __LINE__ << endl;
       ListOfIntegerSets  groups;
       IntegerSet         group;
@@ -1003,6 +1004,15 @@ void ParMesh::LoadSharedEntities(istream &input, string &mesh_type)
       groups.Insert(group);
 
       cerr << "LINE "<< __LINE__ << endl;
+      for (auto const& it : Mesh::gmesh->PointsGPart) {
+	int tag = it.first;
+	std::vector<int> listp = it.second;
+	cerr <<  MyRank << ": PLOP -> "<< it.first;
+      }
+      cerr << "LINE "<< __LINE__ << endl;
+
+      // Check BuildLocalVertices, do we do the same thing ?
+      // Look FindSharedEdges and FindSharedVertices
       // Determine shared faces
       //   Array<Pair<long, apf::MeshEntity*> > sfaces;
       // Loop on sfaces
@@ -1020,8 +1030,16 @@ void ParMesh::LoadSharedEntities(istream &input, string &mesh_type)
       //   Array<int> svert_group;
       //   group.Recreate(eleRanks.Size(), eleRanks);
       //   svert_group[i] = groups.Insert(group) - 1;
-      // group_stria, group_squad, group_sedge, group_svert
-
+      // shared_edges.SetSize(sedges.Size());
+      // shared_edges = ...
+      // shared_trias = ...
+      // shared_quads = ...
+      // group_stria  = 
+      // group_squad  = 
+      // group_sedge  = 
+      // group_svert  = 
+      // svert_lvert  =  // Copy the shared-to-local index Arrays
+      // sedge_ledge
       MFEM_ABORT("load_shared_entities done");
 
       // Build the group communication topology
