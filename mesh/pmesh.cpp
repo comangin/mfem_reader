@@ -999,24 +999,67 @@ void ParMesh::LoadSharedEntities(istream &input, string &mesh_type)
       ListOfIntegerSets  groups;
       IntegerSet         group;
       Array<int>         svert_group;
+      Array<int>         sedge_group;
+      Array<int>         ssurf_group;
+      Array<int>         svolu_group;
 
       gtopo.SetComm(MyComm);
       group.Recreate(1, &MyRank);
       groups.Insert(group);
 
+      int i;
       cerr << "LINE "<< __LINE__ << endl;
-      IntVectMap &pgpart = Mesh::gmesh->PointsGPart;
-      svert_group.SetSize(pgpart.size());
-      int i = 0;
-      for (auto const& it : pgpart) {
-	int tag = it.first;
-	const std::vector<int> &vint = it.second;
-	group.Recreate(vint.size(),&vint[0]);
-	svert_group[i++] = groups.Insert(group) - 1;
-	cerr <<  MyRank << ": PLOP -> "<< it.first;
+      {
+	IntVectMap &pgpart = Mesh::gmesh->PointsGPart;
+	svert_group.SetSize(pgpart.size());
+	i = 0;
+	for (auto const& it : pgpart) {
+	  int tag = it.first;
+	  const std::vector<int> &vint = it.second;
+	  group.Recreate(vint.size(),&vint[0]);
+	  svert_group[i++] = groups.Insert(group) - 1;
+	}
       }
       cerr << "LINE "<< __LINE__ << endl;
+      {
+	IntVectMap &cgpart = Mesh::gmesh->CurvesGPart;
+	sedge_group.SetSize(cgpart.size());
+	i = 0;
+	for (auto const& it : cgpart) {
+	  int tag = it.first;
+	  const std::vector<int> &vint = it.second;
+	  group.Recreate(vint.size(),&vint[0]);
+	  sedge_group[i++] = groups.Insert(group) - 1;
+	}
+      }
+      cerr << "LINE "<< __LINE__ << endl;
+      {
+	IntVectMap &sgpart = Mesh::gmesh->SurfacesGPart;
+	// STOP
+	ssurf_group.SetSize(sgpart.size());
+	i = 0;
+	for (auto const& it : sgpart) {
+	  int tag = it.first;
+	  const std::vector<int> &vint = it.second;
+	  group.Recreate(vint.size(),&vint[0]);
+	  ssurf_group[i++] = groups.Insert(group) - 1;
+	}
+      }
+      cerr << "LINE "<< __LINE__ << endl;
+      {
+	IntVectMap &vgpart = Mesh::gmesh->VolumesGPart;
+	// STOP
+	svolu_group.SetSize(vgpart.size());
+	i = 0;
+	for (auto const& it : vgpart) {
+	  int tag = it.first;
+	  const std::vector<int> &vint = it.second;
+	  group.Recreate(vint.size(),&vint[0]);
+	  svolu_group[i++] = groups.Insert(group) - 1;
+	}
+      }
 
+      
       // Check BuildLocalVertices, do we do the same thing ?
       // Look FindSharedEdges and FindSharedVertices
       // Determine shared faces
