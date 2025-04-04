@@ -2701,21 +2701,20 @@ public:
 
 
 /** @brief Structure for storing information read from GMSH files concerning the mesh. */
-typedef std::vector<int> Vectint_;
-typedef std::map<int, Vectint_> Vectintmap_;
+typedef std::map<int, std::vector<int>> IntVectMap;
 class GMSHData
 {
 private:
 public:
       // Specific to GMSH 4.1 format (begin)
-   Vectintmap_ PointsGPhysical;
-   Vectintmap_ CurvesGPhysical;
-   Vectintmap_ SurfacesGPhysical;
-   Vectintmap_ VolumesGPhysical;
-   Vectintmap_ PointsGPart;
-   Vectintmap_ CurvesGPart;
-   Vectintmap_ SurfacesGPart;
-   Vectintmap_ VolumesGPart;
+   IntVectMap PointsGPhysical;
+   IntVectMap CurvesGPhysical;
+   IntVectMap SurfacesGPhysical;
+   IntVectMap VolumesGPhysical;
+   IntVectMap PointsGPart;
+   IntVectMap CurvesGPart;
+   IntVectMap SurfacesGPart;
+   IntVectMap VolumesGPart;
    // Specific to GMSH 4.1 format (end)
 
 };

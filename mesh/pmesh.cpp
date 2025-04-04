@@ -998,15 +998,21 @@ void ParMesh::LoadSharedEntities(istream &input, string &mesh_type)
       cerr << "LINE "<< __LINE__ << endl;
       ListOfIntegerSets  groups;
       IntegerSet         group;
-      
+      Array<int>         svert_group;
+
       gtopo.SetComm(MyComm);
       group.Recreate(1, &MyRank);
       groups.Insert(group);
 
       cerr << "LINE "<< __LINE__ << endl;
-      for (auto const& it : Mesh::gmesh->PointsGPart) {
+      IntVectMap &pgpart = Mesh::gmesh->PointsGPart;
+      svert_group.SetSize(pgpart.size());
+      int i = 0;
+      for (auto const& it : pgpart) {
 	int tag = it.first;
-	std::vector<int> listp = it.second;
+	const std::vector<int> &vint = it.second;
+	group.Recreate(vint.size(),&vint[0]);
+	svert_group[i++] = groups.Insert(group) - 1;
 	cerr <<  MyRank << ": PLOP -> "<< it.first;
       }
       cerr << "LINE "<< __LINE__ << endl;

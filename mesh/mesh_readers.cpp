@@ -1541,14 +1541,14 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
    }
    gmesh = new GMSHData();
 
-   Vectintmap_ &PointsGPhysical=gmesh->PointsGPhysical;
-   Vectintmap_ &CurvesGPhysical=gmesh->CurvesGPhysical;
-   Vectintmap_ &SurfacesGPhysical=gmesh->SurfacesGPhysical;
-   Vectintmap_ &VolumesGPhysical=gmesh->VolumesGPhysical;
-   Vectintmap_ &PointsGPart=gmesh->PointsGPart;
-   Vectintmap_ &CurvesGPart=gmesh->CurvesGPart;
-   Vectintmap_ &SurfacesGPart=gmesh->SurfacesGPart;
-   Vectintmap_ &VolumesGPart=gmesh->VolumesGPart;
+   IntVectMap &PointsGPhysical=gmesh->PointsGPhysical;
+   IntVectMap &CurvesGPhysical=gmesh->CurvesGPhysical;
+   IntVectMap &SurfacesGPhysical=gmesh->SurfacesGPhysical;
+   IntVectMap &VolumesGPhysical=gmesh->VolumesGPhysical;
+   IntVectMap &PointsGPart=gmesh->PointsGPart;
+   IntVectMap &CurvesGPart=gmesh->CurvesGPart;
+   IntVectMap &SurfacesGPart=gmesh->SurfacesGPart;
+   IntVectMap &VolumesGPart=gmesh->VolumesGPart;
    
    getline(input, buff);
    // There is a number 1 in binary format
@@ -2634,7 +2634,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
                input >> DimEntity >> TagEntity >> type_of_element >> nb_Elements;
                const int n_elem_nodes = nodes_of_gmsh_element[type_of_element-1];
                vector<int> vert_indices(n_elem_nodes);
-               Vectintmap_ *data = NULL;
+               IntVectMap *data = NULL;
 
                if (DimEntity == 0) {
                  data = &(PointsGPhysical);
