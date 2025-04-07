@@ -4333,7 +4333,6 @@ Mesh::Mesh(const std::string &filename, int generate_edges, int refine,
   }
   else {
     LoadDmplex(generate_edges, refine, fix_orientation);
-    exit(0);
   }
   
 }

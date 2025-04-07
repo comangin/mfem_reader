@@ -57,17 +57,9 @@ namespace mfem
     bool finalize_topo = true;
 
     ReadDmplex(curved,read_gf);
-    DMDestroy(&dm);
-    PetscFinalize();
-
-    if (finalize_topo)
-      {
-	// don't generate any boundary elements, especially in parallel
-	bool generate_bdr = false;
-
-	FinalizeTopology(generate_bdr);
-      }
-
+    FinalizeTopology();
+    PrintCharacteristics();
+    
     // if (curved && read_gf)
     // {
     //    Nodes = new GridFunction(this, input);
@@ -121,12 +113,12 @@ namespace mfem
   {
     std :: string tag_parse = "";
     LoaderHDF5(generate_edges,tag_parse);
-    //  FinalizeHDF5(refine, fix_orientation);
+    //Finalize(refine, fix_orientation);
+    
     return 0;
   }
 
 
-  // Read DMplex and convert it into the .Mesh data structure.
   PetscErrorCode Mesh::ReadDmplex(int curved, int read_gf) {
     Vec coordinates;
     PetscErrorCode ierr;
@@ -136,17 +128,16 @@ namespace mfem
     PetscInt *cones, numElements,dm_dim;
     PetscMPIInt rank;
 
+    map<int, int> vertices_map;
      
     PetscCall(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
     coordDim = 3;
-   
-    //  Vertices
+
+    // VERTICES // 
     PetscCall(DMGetCoordinates(dm, &coordinates));
     PetscCall(DMGetDimension(dm,&dm_dim));
-    
-    spaceDim=coordDim; // Dimension du maillage
-    Dim=dm_dim;; // Dim Coord
-    
+    spaceDim=coordDim; 
+    Dim=dm_dim;
     PetscCall(VecGetLocalSize(coordinates, &nValues));
     PetscCall(VecGetArray(coordinates, &coords));
     cout << "Size vec : " << nValues << endl; 
@@ -166,7 +157,7 @@ namespace mfem
     }
 
 
-
+    // ELEMENTS // 
     DMPolytopeType celltype;
     PetscBool hasLabel;
   
@@ -199,28 +190,28 @@ namespace mfem
 
       for (PetscInt j = 0; j < Nv; ++j) {
     	cout << vertex_tetra[j]-numCellsEnd+1 << " ";
-	vertex_tetra[j]=vertex_tetra[j]-numCellsEnd;
+	    vertex_tetra[j]=vertex_tetra[j]-numCellsEnd;
       }
 
-      // Physical Group
+      // PHYSICAL GROUP //
       DMHasLabel(dm, "celltype", &hasLabel);
       PetscInt groupID;
-      ierr = DMGetLabelValue(dm, "Cell Sets", i, &groupID);
+      DMGetLabelValue(dm, "Cell Sets", i, &groupID);
       if (groupID != -1) {
-	PetscPrintf(PETSC_COMM_WORLD, "belongs to the physical group %d\n", groupID);
+	    PetscPrintf(PETSC_COMM_WORLD, "belongs to the physical group %d\n", groupID);
       } else {
-	PetscPrintf(PETSC_COMM_WORLD, "does not belong to any physical group\n");
+	      PetscPrintf(PETSC_COMM_WORLD, "does not belong to any physical group\n");
       }
 
 
-      //TypeElement
+      // TYPE ELEMENT //
       DMPlexGetCellType(dm,i,&celltype);
       cout << "Type : " << celltype << endl;
 
       switch (celltype)
       	{
       	case 0:
-	  elements[i]=new Point(&vertex_tetra[0],celltype);
+	        elements[i]=new Point(&vertex_tetra[0],groupID);
       	  break;
 
       	case 1:
@@ -232,11 +223,11 @@ namespace mfem
       	  break;
 
       	case 3:
-      	  elements[i]=new Triangle(&vertex_tetra[0],celltype);
+      	  elements[i]=new Triangle(&vertex_tetra[0],groupID);
       	  break;
 
       	case 4:
-      	  elements[i]=new Quadrilateral(&vertex_tetra[0],celltype);
+      	  elements[i]=new Quadrilateral(&vertex_tetra[0],groupID);
       	  break;
 
       	case 5:
@@ -244,11 +235,11 @@ namespace mfem
       	  break;
 
       	case 6:
-	  elements[i]=new Tetrahedron(&vertex_tetra[0],celltype);
+	        elements[i]=new Tetrahedron(&vertex_tetra[0],groupID);
       	  break;
 
       	case 7:
-      	  // Handle HEXAHEDRON case
+      	  elements[i]=new Hexahedron(&vertex_tetra[0],groupID);
       	  break;
 
       	case 8:
@@ -300,26 +291,8 @@ namespace mfem
       PetscPrintf(PETSC_COMM_WORLD, "\n");
     }
 
-    this->FinalizeTopology();
-    this->RemoveUnusedVertices();
     DMView(dm, PETSC_VIEWER_STDOUT_WORLD);
-    PrintInfo();
 
-
-    std::ofstream ostream("output_mesh.vtk");
-    PrintVTK(ostream);
-    
-    // WRITE MESH TO .MESH MFEM 
-    ofstream mesh_ofs("output_mesh.mesh");
-    Print(mesh_ofs);
-    mesh_ofs.close();
-      
-    // PetscCall(VecRestoreArray(coordinates, &coords));
-    // PetscViewer viewer;
-    // PetscViewerVTKOpen(PETSC_COMM_WORLD, "output_mesh_ascii.vtu", FILE_MODE_WRITE, &viewer);
-    // PetscViewerSetFormat(viewer, PETSC_VIEWER_ASCII_VTK);
-    // DMView(dm, viewer);
-    // PetscViewerDestroy(&viewer);
     return 0;
 
  }
