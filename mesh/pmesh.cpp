@@ -1058,6 +1058,7 @@ void ParMesh::LoadSharedEntities(istream &input, string &mesh_type)
 	  svolu_group[i++] = groups.Insert(group) - 1;
 	}
       }
+      cerr << "LINE "<< __LINE__ << endl;
 
       
       // Check BuildLocalVertices, do we do the same thing ?
@@ -2186,6 +2187,11 @@ void ParMesh::EnsureParNodes()
 
 void ParMesh::ExchangeFaceNbrData()
 {
+   static bool first = true;
+   if (first) {
+     std::cout << __FILE__ << " " << __LINE__  << " ExchangeFaceNbrData " << std::endl;
+     first = false;
+   }
    if (have_face_nbr_data)
    {
       return;
@@ -2276,6 +2282,12 @@ void ParMesh::ExchangeFaceNbrData()
 
 void ParMesh::ExchangeFaceNbrData(Table *gr_sface, int *s2l_face)
 {
+
+   static bool first = true;
+   if (first) {
+     std::cout << __FILE__ << " " << __LINE__  << " ExchangeFaceNbrData " << std::endl;
+     first = false;
+   }
    int num_face_nbrs = 0;
    for (int g = 1; g < GetNGroups(); g++)
    {
@@ -2669,6 +2681,11 @@ void ParMesh::ExchangeFaceNbrData(Table *gr_sface, int *s2l_face)
 
 void ParMesh::ExchangeFaceNbrNodes()
 {
+   static bool first = true;
+   if (first) {
+     std::cout << __FILE__ << " " << __LINE__  << " ExchangeFaceNbrNodes " << std::endl;
+     first = false;
+   }
    if (!have_face_nbr_data)
    {
       ExchangeFaceNbrData(); // calls this method at the end

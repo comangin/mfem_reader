@@ -153,6 +153,11 @@ void ParBilinearForm::ParallelRAP(SparseMatrix &loc_A, OperatorHandle &A,
 
 void ParBilinearForm::ParallelAssemble(OperatorHandle &A, SparseMatrix *A_local)
 {
+  static bool first = true;
+   if (first) {
+     std::cout << __FILE__ << " " << __LINE__  << " ParBilinearForm::ParallelAssemble " << std::endl;
+     first = false;
+   }
    A.Clear();
 
    if (A_local == NULL) { return; }
@@ -224,6 +229,11 @@ void ParBilinearForm::AssembleSharedFaces(int skip_zeros)
    Array<int> vdofs1, vdofs2, vdofs_all;
    DenseMatrix elemmat;
 
+  static bool first = true;
+   if (first) {
+     std::cout << __FILE__ << " " << __LINE__  << " AssembleSharedF " << std::endl;
+     first = false;
+   }
    int nfaces = pmesh->GetNSharedFaces();
    for (int i = 0; i < nfaces; i++)
    {
@@ -264,21 +274,35 @@ void ParBilinearForm::AssembleSharedFaces(int skip_zeros)
 
 void ParBilinearForm::Assemble(int skip_zeros)
 {
+  static bool first = true;
+   if (first) {
+     std::cout << __FILE__ << " " << __LINE__  << " ParBilinearForm::Assemble " << std::endl; 
+   }
    if (interior_face_integs.Size())
    {
       pfes->ExchangeFaceNbrData();
+      if (first) {
+	std::cout << __FILE__ << " " << __LINE__  << " ParBilinearForm::Assemble " << std::endl;
+      }
       if (!ext && mat == NULL)
       {
          pAllocMat();
       }
    }
 
+      if (first) {
+	std::cout << __FILE__ << " " << __LINE__  << " ParBilinearForm::Assemble " << std::endl;
+      }
    BilinearForm::Assemble(skip_zeros);
 
    if (!ext && interior_face_integs.Size() > 0)
    {
       AssembleSharedFaces(skip_zeros);
+      if (first) {
+	std::cout << __FILE__ << " " << __LINE__  << " ParBilinearForm::Assemble " << std::endl;
+      }
    }
+     first = false;
 }
 
 void ParBilinearForm::AssembleDiagonal(Vector &diag) const
@@ -541,6 +565,7 @@ void ParBilinearForm::FormSystemMatrix(const Array<int> &ess_tdof_list,
 void ParBilinearForm::RecoverFEMSolution(
    const Vector &X, const Vector &b, Vector &x)
 {
+   std::cout << __FILE__ << " " << __LINE__  << "  ParBilinearForm::RecoverFEMSolution " << std::endl;
    if (ext)
    {
       ext->RecoverFEMSolution(X, b, x);
@@ -569,6 +594,7 @@ void ParBilinearForm::RecoverFEMSolution(
    {
       // Apply conforming prolongation
       x.SetSize(P.Height(), GetHypreMemoryType());
+      std::cout << __FILE__ << " " << __LINE__  << " ParBilinearForm::RecoverFEMSolution  " << std::endl;
       P.Mult(X, x);
    }
 }

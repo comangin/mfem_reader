@@ -96,7 +96,9 @@ void GroupTopology::ProcToLProc()
 
 void GroupTopology::Create(ListOfIntegerSets &groups, int mpitag)
 {
-   groups.AsTable(group_lproc); // group_lproc = group_proc
+  std::cout << __FILE__ << " " << __LINE__  << " GroupTopology::Create " << std::endl;
+
+  groups.AsTable(group_lproc); // group_lproc = group_proc
 
    Table group_mgroupandproc;
    group_mgroupandproc.SetDims(NGroups(),
@@ -367,6 +369,8 @@ GroupCommunicator::GroupCommunicator(const GroupTopology &gt, Mode m)
 
 void GroupCommunicator::Create(const Array<int> &ldof_group)
 {
+  std::cout << __FILE__ << " " << __LINE__  << " Communication::Create " << std::endl;
+   
    group_ldof.MakeI(gtopo.NGroups());
    for (int i = 0; i < ldof_group.Size(); i++)
    {
@@ -395,7 +399,7 @@ void GroupCommunicator::Finalize()
 {
    int request_counter = 0;
 
-   // size buf_offsets = max(number of groups, number of neighbors)
+  std::cout << __FILE__ << " " << __LINE__  << " Communication::Finalize " << std::endl;   // size buf_offsets = max(number of groups, number of neighbors)
    buf_offsets = new int[max(group_ldof.Size(), gtopo.GetNumNeighbors())];
    buf_offsets[0] = 0;
    for (int gr = 1; gr < group_ldof.Size(); gr++)
@@ -713,7 +717,8 @@ void GroupCommunicator::BcastBegin(T *ldata, int layout) const
 {
    MFEM_VERIFY(comm_lock == 0, "object is already in use");
 
-   if (group_buf_size == 0) { return; }
+  std::cout << __FILE__ << " " << __LINE__  << " Communication::BcastBegin " << std::endl;
+  if (group_buf_size == 0) { return; }
 
    int request_counter = 0;
    switch (mode)

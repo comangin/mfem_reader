@@ -38,12 +38,12 @@ for i in $MESH_LIST; do
 done
 
 cd $MFEM_BUILD_DIR/examples
-echo compass.msh
+echo compass.msh # non periodic
 (./ex39 -m ../../data/compass22.msh | tail -n 10) > res22
 (./ex39 -m ../../data/compass41.msh | tail -n 10) > res41
 diff -s res22 res41
 cd $MFEM_BUILD_DIR/examples
-echo cubeper.msh
+echo cubeper.msh # periodic
 (./ex4 -m ../../data/cubeper22.msh -no-bc | tail -n 10) > res22
 (./ex4 -m ../../data/cubeper41.msh -no-bc | tail -n 10) > res41
 diff -s res22 res41

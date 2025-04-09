@@ -2702,11 +2702,12 @@ public:
 
 /** @brief Structure for storing information read from GMSH files concerning the mesh. */
 typedef std::map<int, std::vector<int>> IntVectMap;
+typedef std::map<int, std::array<uint64_t,4>> FourUIntMap;
 class GMSHData
 {
 private:
 public:
-      // Specific to GMSH 4.1 format (begin)
+  // Specific to GMSH 4.1 format (begin)
    IntVectMap PointsGPhysical;
    IntVectMap CurvesGPhysical;
    IntVectMap SurfacesGPhysical;
@@ -2715,6 +2716,10 @@ public:
    IntVectMap CurvesGPart;
    IntVectMap SurfacesGPart;
    IntVectMap VolumesGPart;
+   FourUIntMap point_belonging;
+   FourUIntMap curve_belonging;
+   FourUIntMap surface_belonging;
+   FourUIntMap volume_belonging;
    // Specific to GMSH 4.1 format (end)
 
 };

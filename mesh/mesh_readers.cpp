@@ -1549,7 +1549,10 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
    IntVectMap &CurvesGPart=gmesh->CurvesGPart;
    IntVectMap &SurfacesGPart=gmesh->SurfacesGPart;
    IntVectMap &VolumesGPart=gmesh->VolumesGPart;
-   
+   FourUIntMap &pbelong=gmesh->point_belonging;
+   FourUIntMap &cbelong=gmesh->curve_belonging;
+   FourUIntMap &sbelong=gmesh->surface_belonging;
+   FourUIntMap &vbelong=gmesh->volume_belonging;
    getline(input, buff);
    // There is a number 1 in binary format
    if (binary)
@@ -1611,7 +1614,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
           input >> NumOfVertices;
           getline(input, buff);
           vertices.SetSize(NumOfVertices);
-          for (int ver = 0; ver < NumOfVertices; ++ver)
+          for (uint64_t ver = 0; ver < NumOfVertices; ++ver)
             {
               if (binary)
                 {
@@ -1640,12 +1643,12 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
         }
         if (iversion == 41)
         {
-          int DimEntity, NumOfEntities, TagEntity, MinTagV, MaxTagV;
+          uint64_t DimEntity, NumOfEntities, TagEntity, MinTagV, MaxTagV;
           int NumVertPerBlock, parametric, tag, ScanParametric = 0;
           input >> NumOfEntities >>NumOfVertices >> MinTagV >> MaxTagV;
           getline(input, buff);
           vertices.SetSize(NumOfVertices);
-          for (int i = 0, ver = 0; i < NumOfEntities; i = i + 1)
+          for (uint64_t i = 0, ver = 0; i < NumOfEntities; i = i + 1)
             { 
               input >> DimEntity >> TagEntity >> parametric >> NumVertPerBlock;
 	      ScanParametric = parametric || ScanParametric;
@@ -1663,6 +1666,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
                     } 
                   vertices[ver] = Vertex(coord, gmsh_dim);
                   vertices_map[index[j]] = ver;
+		  std::array<uint64_t,4> myv = std::array<uint64_t,4>{ver, DimEntity, TagEntity, 0};
+		  pbelong[index[j]] = myv; 
                   for (int ci = 0; ci < gmsh_dim; ++ci)
                     {
                       bb_min[ci] = (ver == 0) ? coord[ci] :
@@ -2626,7 +2631,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
          } // if ASCII format 2.2
          if ((!binary) && iversion == 41)
          {
-           int DimEntity, Tag, TagEntity, nb_Elements, totelt;
+           uint64_t DimEntity, Tag, TagEntity, nb_Elements, totelt;
            
            totelt = 0;
            for (int bk = 0; bk < num_of_block_elements; ++bk)
@@ -2709,6 +2714,9 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
                   {
                      elements_1D.push_back(
                         new Segment(&vert_indices[0], phys_domain));
+		     std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_1D.size()-1, DimEntity, TagEntity, 1};
+		     cbelong[no_elt] = myv; 
+
                      if (type_of_element != 1)
                      {
                         Array<int> * hov = new Array<int>;
@@ -2732,6 +2740,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
                      {
                         elements_2D.push_back(
                            new Triangle(&vert_indices[0], phys_domain));
+			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_2D.size()-1, DimEntity, TagEntity, 2};
+			sbelong[no_elt] = myv; 
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2754,6 +2764,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
                      {
                         elements_2D.push_back(
                            new Quadrilateral(&vert_indices[0], phys_domain));
+			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_2D.size()-1, DimEntity, TagEntity, 3};
+			sbelong[no_elt] = myv; 
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2782,6 +2794,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
                         elements_3D.push_back(
                            new Tetrahedron(&vert_indices[0], phys_domain));
 #endif
+			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_3D.size()-1, DimEntity, TagEntity, 4};
+			vbelong[no_elt] = myv; 
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2804,6 +2818,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
                         el_order--;
                         elements_3D.push_back(
                            new Hexahedron(&vert_indices[0], phys_domain));
+			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_3D.size()-1, DimEntity, TagEntity, 5};
+			vbelong[no_elt] = myv; 
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2826,6 +2842,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
                         el_order--;
                         elements_3D.push_back(
                            new Wedge(&vert_indices[0], phys_domain));
+			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_3D.size()-1, DimEntity, TagEntity, 6};
+			vbelong[no_elt] = myv; 
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2848,6 +2866,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
                         el_order--;
                         elements_3D.push_back(
                            new Pyramid(&vert_indices[0], phys_domain));
+			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_3D.size()-1, DimEntity, TagEntity, 7};
+			vbelong[no_elt] = myv; 
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2861,6 +2881,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool par
                   {
                      elements_0D.push_back(
                         new Point(&vert_indices[0], phys_domain));
+		     std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_0D.size()-1, DimEntity, TagEntity, 0};
+		     vbelong[no_elt] = myv; 
                      break;
                   }
                   default: // any other element
