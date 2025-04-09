@@ -68,8 +68,9 @@ private:
 public: 
    /// Build a parallel MFEM mesh from a parallel PUMI mesh.
   ParGmshMesh(MPI_Comm comm, std::string mesh_file,
-               int refine = 1, bool fix_orientation = true);
-
+	      int generate_edges = 0, int refine = 1,
+	      bool fix_orientation = true);
+ 
    virtual ~ParGmshMesh() {}
 };
 

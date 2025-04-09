@@ -346,7 +346,7 @@ protected:
    void ReadNURBSMesh(std::istream &input, int &curved, int &read_gf,
                       bool spacing=false);
    void ReadInlineMesh(std::istream &input, bool generate_edges = false);
-   void ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool parallel=false);
+   void ReadGmshMesh(std::istream &input, int &curved, int &read_gf);
 
    /* Note NetCDF (optional library) is used for reading cubit files */
 #ifdef MFEM_USE_NETCDF
@@ -2707,6 +2707,7 @@ class GMSHData
 private:
 public:
   // Specific to GMSH 4.1 format (begin)
+   bool parallel = false;
    IntVectMap PointsGPhysical;
    IntVectMap CurvesGPhysical;
    IntVectMap SurfacesGPhysical;

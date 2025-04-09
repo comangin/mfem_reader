@@ -490,11 +490,11 @@ void GmshHOPyramidMapping(int order, int *map)
 // This function loads a parallel GMSH mesh (that has been read previously through
 // Mesh::ReadGmshMesh and returns the parallel MFEM mesh corresponding to it.
 ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
-                         int refine, bool fix_orientation)
+                         int refine, int generate_edges, bool fix_orientation)
 {
    std::ifstream ifs(gmsh_file);
    MFEM_VERIFY(ifs.good(), "Mesh file " << gmsh_file << " not found.");
-   
+   Mesh mesh(gmsh_file, refine, generate_edges, fix_orientation);
 
 }
 
