@@ -346,7 +346,7 @@ protected:
    void ReadNURBSMesh(std::istream &input, int &curved, int &read_gf,
                       bool spacing=false);
    void ReadInlineMesh(std::istream &input, bool generate_edges = false);
-  void ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool parallel=false);
+   void ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool parallel=false);
 
    /* Note NetCDF (optional library) is used for reading cubit files */
 #ifdef MFEM_USE_NETCDF
@@ -587,8 +587,8 @@ protected:
    // Used in the methods FinalizeXXXMesh() and FinalizeTopology()
    void FinalizeCheck();
 
-   void Loader(std::istream &input, std::string &mesh_type, int generate_edges = 0,
-               bool parallel = 0);
+   void Loader(std::istream &input, int generate_edges = 0,
+               std::string parse_tag = "");
 
    /** If NURBS mesh, write NURBS format. If NCMesh, write mfem v1.1 format.
        If section_delimiter is empty, write mfem v1.0 format. Otherwise, write
@@ -752,8 +752,7 @@ public:
    virtual void Load(std::istream &input, int generate_edges = 0,
                      int refine = 1, bool fix_orientation = true)
    {
-      std::string mesh_type;
-      Loader(input, mesh_type, generate_edges);
+      Loader(input, generate_edges);
       Finalize(refine, fix_orientation);
    }
 

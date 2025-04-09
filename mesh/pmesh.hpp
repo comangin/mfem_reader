@@ -315,7 +315,7 @@ protected:
    /// Ensure that bdr_attributes and attributes agree across processors
    void DistributeAttributes(Array<int> &attr);
 
-  void LoadSharedEntities(std::istream &input, std::string &mesh_type);
+   void LoadSharedEntities(std::istream &input);
 
    /// If the mesh is curved, make sure 'Nodes' is ParGridFunction.
    /** Note that this method is not related to the public 'Mesh::EnsureNodes`.*/

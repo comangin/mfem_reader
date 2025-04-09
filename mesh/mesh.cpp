@@ -4524,25 +4524,20 @@ void Mesh::SetMeshGen()
    }
 }
 
-void Mesh::Loader(std::istream &input, string &mesh_type, int generate_edges,
-                  bool parallel)
+void Mesh::Loader(std::istream &input, int generate_edges,
+                  std::string parse_tag)
 {
    int curved = 0, read_gf = 1;
    bool finalize_topo = true;
-   std::string parse_tag = "";
 
-   if (parallel)
-   {
-     parse_tag = "mfem_serial_mesh_end";
-   }
    if (!input)
    {
       MFEM_ABORT("Input stream is not open");
    }
 
-   cerr << "LINE "<< __LINE__ << endl;
    Clear();
 
+   string mesh_type;
    input >> ws;
    getline(input, mesh_type);
    filter_dos(mesh_type);
@@ -4559,7 +4554,6 @@ void Mesh::Loader(std::istream &input, string &mesh_type, int generate_edges,
    if (mesh_type == "MFEM NC mesh v1.0") { mfem_nc_version = 10; }
    else if (mesh_type == "MFEM mesh v1.1") { mfem_nc_version = 1 /*legacy*/; }
 
-   cerr << "LINE "<< __LINE__ << endl;
    if (mfem_version)
    {
       // Formats mfem_v12 and newer have a tag indicating the end of the mesh
@@ -4651,9 +4645,7 @@ void Mesh::Loader(std::istream &input, string &mesh_type, int generate_edges,
    }
    else if (mesh_type == "$MeshFormat") // Gmsh
    {
-      cerr << "LINE "<< __LINE__ << endl;
       ReadGmshMesh(input, curved, read_gf);
-      cerr << "LINE "<< __LINE__ << endl;
    }
    else if
    ((mesh_type.size() > 2 &&

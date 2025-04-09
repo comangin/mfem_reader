@@ -954,19 +954,13 @@ void ParMesh::Load(istream &input, int generate_edges, int refine,
    // Tell Loader() to read up to 'mfem_serial_mesh_end' instead of
    // 'mfem_mesh_end', as we have additional parallel mesh data to load in from
    // the stream.
-   string mesh_type;
-   cerr << "LINE "<< __LINE__ << endl;
-   Loader(input, mesh_type, generate_edges, 1);
+   Loader(input, generate_edges, "mfem_serial_mesh_end");
 
-   cerr << "LINE "<< __LINE__ << endl;
    ReduceMeshGen(); // determine the global 'meshgen'
 
-   cerr << "LINE "<< __LINE__ << endl;
    if (Conforming())
    {
-      cerr << "LINE "<< __LINE__ << endl;
-      LoadSharedEntities(input, mesh_type);
-      cerr << "LINE "<< __LINE__ << endl;
+      LoadSharedEntities(input);
    }
    else
    {
@@ -988,268 +982,264 @@ void ParMesh::Load(istream &input, int generate_edges, int refine,
    // TODO: NURBS meshes?
 }
 
-void ParMesh::LoadSharedEntities(istream &input, string &mesh_type)
+void ParMesh::LoadSharedEntities(istream &input)
 {
+   string ident;
+   skip_comment_lines(input, '#');
 
-   if (mesh_type == "$MeshFormat") // Gmsh
+   // read the group topology
+   input >> ident;
+   MFEM_VERIFY(ident == "communication_groups",
+               "input stream is not a parallel MFEM mesh");
+   gtopo.Load(input);
+
+   skip_comment_lines(input, '#');
+
+   // read and set the sizes of svert_lvert, group_svert
    {
-
-     // Copy Mesh at some point into Mesh field ? Mesh(pmesh, false)
-      cerr << "LINE "<< __LINE__ << endl;
-      ListOfIntegerSets  groups;
-      IntegerSet         group;
-      Array<int>         svert_group;
-      Array<int>         sedge_group;
-      Array<int>         ssurf_group;
-      Array<int>         svolu_group;
-
-      gtopo.SetComm(MyComm);
-      group.Recreate(1, &MyRank);
-      groups.Insert(group);
-
-      int i;
-      cerr << "LINE "<< __LINE__ << endl;
-      {
-	IntVectMap &pgpart = Mesh::gmesh->PointsGPart;
-	svert_group.SetSize(pgpart.size());
-	i = 0;
-	for (auto const& it : pgpart) {
-	  int tag = it.first;
-	  const std::vector<int> &vint = it.second;
-	  group.Recreate(vint.size(),&vint[0]);
-	  svert_group[i++] = groups.Insert(group) - 1;
-	}
-      }
-      cerr << "LINE "<< __LINE__ << endl;
-      {
-	IntVectMap &cgpart = Mesh::gmesh->CurvesGPart;
-	sedge_group.SetSize(cgpart.size());
-	i = 0;
-	for (auto const& it : cgpart) {
-	  int tag = it.first;
-	  const std::vector<int> &vint = it.second;
-	  group.Recreate(vint.size(),&vint[0]);
-	  sedge_group[i++] = groups.Insert(group) - 1;
-	}
-      }
-      cerr << "LINE "<< __LINE__ << endl;
-      {
-	IntVectMap &sgpart = Mesh::gmesh->SurfacesGPart;
-	// STOP
-	ssurf_group.SetSize(sgpart.size());
-	i = 0;
-	for (auto const& it : sgpart) {
-	  int tag = it.first;
-	  const std::vector<int> &vint = it.second;
-	  group.Recreate(vint.size(),&vint[0]);
-	  ssurf_group[i++] = groups.Insert(group) - 1;
-	}
-      }
-      cerr << "LINE "<< __LINE__ << endl;
-      {
-	IntVectMap &vgpart = Mesh::gmesh->VolumesGPart;
-	// STOP
-	svolu_group.SetSize(vgpart.size());
-	i = 0;
-	for (auto const& it : vgpart) {
-	  int tag = it.first;
-	  const std::vector<int> &vint = it.second;
-	  group.Recreate(vint.size(),&vint[0]);
-	  svolu_group[i++] = groups.Insert(group) - 1;
-	}
-      }
-      cerr << "LINE "<< __LINE__ << endl;
-
-      
-      // Check BuildLocalVertices, do we do the same thing ?
-      // Look FindSharedEdges and FindSharedVertices
-      // Determine shared faces
-      //   Array<Pair<long, apf::MeshEntity*> > sfaces;
-      // Loop on sfaces
-      // .. sfaces.Append(Pair<long,apf::MeshEntity*>(id, ent));
-      // sfaces.Sort();
-      //  for (int i = 0; i < sfaces.Size(); i++)
-      //  {
-      //     group.Recreate(2, eleRanks);
-      //     sfaces[i].one = groups.Insert(group) - 1;
-      //  }
-      // Determine shared edges
-      //   Array<Pair<long, apf::MeshEntity*> > sedges;
-      // Determine shared vertices
-      //   Array<Pair<int, apf::MeshEntity*> > sverts;
-      //   Array<int> svert_group;
-      //   group.Recreate(eleRanks.Size(), eleRanks);
-      //   svert_group[i] = groups.Insert(group) - 1;
-      // shared_edges.SetSize(sedges.Size());
-      // shared_edges = ...
-      // shared_trias = ...
-      // shared_quads = ...
-      // group_stria  = 
-      // group_squad  = 
-      // group_sedge  = 
-      // group_svert  = 
-      // svert_lvert  =  // Copy the shared-to-local index Arrays
-      // sedge_ledge
-      MFEM_ABORT("load_shared_entities done");
-
-      // Build the group communication topology
-      gtopo.Create(groups, 822);
-      
-      // Determine sedge_ledge and sface_lface
-      FinalizeParTopo();
-      
-      
+      int num_sverts;
+      input >> ident >> num_sverts;
+      MFEM_VERIFY(ident == "total_shared_vertices", "invalid mesh file");
+      svert_lvert.SetSize(num_sverts);
+      group_svert.SetDims(GetNGroups()-1, num_sverts);
+   }
+   // read and set the sizes of sedge_ledge, group_sedge
+   if (Dim >= 2)
+   {
+      skip_comment_lines(input, '#');
+      int num_sedges;
+      input >> ident >> num_sedges;
+      MFEM_VERIFY(ident == "total_shared_edges", "invalid mesh file");
+      sedge_ledge.SetSize(num_sedges);
+      shared_edges.SetSize(num_sedges);
+      group_sedge.SetDims(GetNGroups()-1, num_sedges);
    }
    else
    {
-      string ident;
+      group_sedge.SetSize(GetNGroups()-1, 0);   // create empty group_sedge
+   }
+   // read and set the sizes of sface_lface, group_{stria,squad}
+   if (Dim >= 3)
+   {
       skip_comment_lines(input, '#');
-      
-      // read the group topology
-      input >> ident;
-      MFEM_VERIFY(ident == "communication_groups",
-                  "input stream is not a parallel MFEM mesh");
-      gtopo.Load(input);
-      
+      int num_sface;
+      input >> ident >> num_sface;
+      MFEM_VERIFY(ident == "total_shared_faces", "invalid mesh file");
+      sface_lface.SetSize(num_sface);
+      group_stria.MakeI(GetNGroups()-1);
+      group_squad.MakeI(GetNGroups()-1);
+   }
+   else
+   {
+      group_stria.SetSize(GetNGroups()-1, 0);   // create empty group_stria
+      group_squad.SetSize(GetNGroups()-1, 0);   // create empty group_squad
+   }
+
+   // read, group by group, the contents of group_svert, svert_lvert,
+   // group_sedge, shared_edges, group_{stria,squad}, shared_{trias,quads}
+   int svert_counter = 0, sedge_counter = 0;
+   for (int gr = 1; gr < GetNGroups(); gr++)
+   {
       skip_comment_lines(input, '#');
-      
-      // read and set the sizes of svert_lvert, group_svert
+#if 0
+      // implementation prior to prism-dev merge
+      int g;
+      input >> ident >> g; // group
+      if (g != gr)
       {
-         int num_sverts;
-         input >> ident >> num_sverts;
-         MFEM_VERIFY(ident == "total_shared_vertices", "invalid mesh file");
-         svert_lvert.SetSize(num_sverts);
-         group_svert.SetDims(GetNGroups()-1, num_sverts);
+         mfem::err << "ParMesh::ParMesh : expecting group " << gr
+                   << ", read group " << g << endl;
+         mfem_error();
       }
-      // read and set the sizes of sedge_ledge, group_sedge
+#endif
+      {
+         int nv;
+         input >> ident >> nv; // shared_vertices (in this group)
+         MFEM_VERIFY(ident == "shared_vertices", "invalid mesh file");
+         nv += svert_counter;
+         MFEM_VERIFY(nv <= group_svert.Size_of_connections(),
+                     "incorrect number of total_shared_vertices");
+         group_svert.GetI()[gr] = nv;
+         for ( ; svert_counter < nv; svert_counter++)
+         {
+            group_svert.GetJ()[svert_counter] = svert_counter;
+            input >> svert_lvert[svert_counter];
+         }
+      }
       if (Dim >= 2)
       {
-         skip_comment_lines(input, '#');
-         int num_sedges;
-         input >> ident >> num_sedges;
-         MFEM_VERIFY(ident == "total_shared_edges", "invalid mesh file");
-         sedge_ledge.SetSize(num_sedges);
-         shared_edges.SetSize(num_sedges);
-         group_sedge.SetDims(GetNGroups()-1, num_sedges);
-      }
-      else
-      {
-         group_sedge.SetSize(GetNGroups()-1, 0);   // create empty group_sedge
-      }
-      // read and set the sizes of sface_lface, group_{stria,squad}
-      if (Dim >= 3)
-      {
-         skip_comment_lines(input, '#');
-         int num_sface;
-         input >> ident >> num_sface;
-         MFEM_VERIFY(ident == "total_shared_faces", "invalid mesh file");
-         sface_lface.SetSize(num_sface);
-         group_stria.MakeI(GetNGroups()-1);
-         group_squad.MakeI(GetNGroups()-1);
-      }
-      else
-      {
-         group_stria.SetSize(GetNGroups()-1, 0);   // create empty group_stria
-         group_squad.SetSize(GetNGroups()-1, 0);   // create empty group_squad
-      }
-      
-      // read, group by group, the contents of group_svert, svert_lvert,
-      // group_sedge, shared_edges, group_{stria,squad}, shared_{trias,quads}
-      int svert_counter = 0, sedge_counter = 0;
-      for (int gr = 1; gr < GetNGroups(); gr++)
-      {
-         skip_comment_lines(input, '#');
-
-#if 0
-         // implementation prior to prism-dev merge
-         int g;
-         input >> ident >> g; // group
-         if (g != gr)
+         int ne, v[2];
+         input >> ident >> ne; // shared_edges (in this group)
+         MFEM_VERIFY(ident == "shared_edges", "invalid mesh file");
+         ne += sedge_counter;
+         MFEM_VERIFY(ne <= group_sedge.Size_of_connections(),
+                     "incorrect number of total_shared_edges");
+         group_sedge.GetI()[gr] = ne;
+         for ( ; sedge_counter < ne; sedge_counter++)
          {
-            mfem::err << "ParMesh::ParMesh : expecting group " << gr
-                      << ", read group " << g << endl;
-            mfem_error();
-         }
-#endif
-         {
-            int nv;
-            input >> ident >> nv; // shared_vertices (in this group)
-            MFEM_VERIFY(ident == "shared_vertices", "invalid mesh file");
-            nv += svert_counter;
-            MFEM_VERIFY(nv <= group_svert.Size_of_connections(),
-                        "incorrect number of total_shared_vertices");
-            group_svert.GetI()[gr] = nv;
-            for ( ; svert_counter < nv; svert_counter++)
-            {
-               group_svert.GetJ()[svert_counter] = svert_counter;
-               input >> svert_lvert[svert_counter];
-            }
-         }
-         if (Dim >= 2)
-         {
-            int ne, v[2];
-            input >> ident >> ne; // shared_edges (in this group)
-            MFEM_VERIFY(ident == "shared_edges", "invalid mesh file");
-            ne += sedge_counter;
-            MFEM_VERIFY(ne <= group_sedge.Size_of_connections(),
-                        "incorrect number of total_shared_edges");
-            group_sedge.GetI()[gr] = ne;
-            for ( ; sedge_counter < ne; sedge_counter++)
-            {
-               group_sedge.GetJ()[sedge_counter] = sedge_counter;
-               input >> v[0] >> v[1];
-               shared_edges[sedge_counter] = new Segment(v[0], v[1], 1);
-            }
-         }
-         if (Dim >= 3)
-         {
-            int nf, tstart = shared_trias.Size(), qstart = shared_quads.Size();
-            input >> ident >> nf; // shared_faces (in this group)
-            for (int i = 0; i < nf; i++)
-            {
-               int geom, *v;
-               input >> geom;
-               switch (geom)
-               {
-                  case Geometry::TRIANGLE:
-                     shared_trias.SetSize(shared_trias.Size()+1);
-                     v = shared_trias.Last().v;
-                     for (int ii = 0; ii < 3; ii++) { input >> v[ii]; }
-                     break;
-                  case Geometry::SQUARE:
-                     shared_quads.SetSize(shared_quads.Size()+1);
-                     v = shared_quads.Last().v;
-                     for (int ii = 0; ii < 4; ii++) { input >> v[ii]; }
-                     break;
-                  default:
-                     MFEM_ABORT("invalid shared face geometry: " << geom);
-               }
-            }
-            group_stria.AddColumnsInRow(gr-1, shared_trias.Size()-tstart);
-            group_squad.AddColumnsInRow(gr-1, shared_quads.Size()-qstart);
+            group_sedge.GetJ()[sedge_counter] = sedge_counter;
+            input >> v[0] >> v[1];
+            shared_edges[sedge_counter] = new Segment(v[0], v[1], 1);
          }
       }
       if (Dim >= 3)
       {
-         MFEM_VERIFY(shared_trias.Size() + shared_quads.Size()
-                     == sface_lface.Size(),
-                     "incorrect number of total_shared_faces");
-         // Define the J arrays of group_stria and group_squad -- they just contain
-         // consecutive numbers starting from 0 up to shared_trias.Size()-1 and
-         // shared_quads.Size()-1, respectively.
-         group_stria.MakeJ();
-         for (int i = 0; i < shared_trias.Size(); i++)
+         int nf, tstart = shared_trias.Size(), qstart = shared_quads.Size();
+         input >> ident >> nf; // shared_faces (in this group)
+         for (int i = 0; i < nf; i++)
          {
-            group_stria.GetJ()[i] = i;
+            int geom, *v;
+            input >> geom;
+            switch (geom)
+            {
+               case Geometry::TRIANGLE:
+                  shared_trias.SetSize(shared_trias.Size()+1);
+                  v = shared_trias.Last().v;
+                  for (int ii = 0; ii < 3; ii++) { input >> v[ii]; }
+                  break;
+               case Geometry::SQUARE:
+                  shared_quads.SetSize(shared_quads.Size()+1);
+                  v = shared_quads.Last().v;
+                  for (int ii = 0; ii < 4; ii++) { input >> v[ii]; }
+                  break;
+               default:
+                  MFEM_ABORT("invalid shared face geometry: " << geom);
+            }
          }
-         group_squad.MakeJ();
-         for (int i = 0; i < shared_quads.Size(); i++)
-         {
-            group_squad.GetJ()[i] = i;
-         }
+         group_stria.AddColumnsInRow(gr-1, shared_trias.Size()-tstart);
+         group_squad.AddColumnsInRow(gr-1, shared_quads.Size()-qstart);
+      }
+   }
+   if (Dim >= 3)
+   {
+      MFEM_VERIFY(shared_trias.Size() + shared_quads.Size()
+                  == sface_lface.Size(),
+                  "incorrect number of total_shared_faces");
+      // Define the J arrays of group_stria and group_squad -- they just contain
+      // consecutive numbers starting from 0 up to shared_trias.Size()-1 and
+      // shared_quads.Size()-1, respectively.
+      group_stria.MakeJ();
+      for (int i = 0; i < shared_trias.Size(); i++)
+      {
+         group_stria.GetJ()[i] = i;
+      }
+      group_squad.MakeJ();
+      for (int i = 0; i < shared_quads.Size(); i++)
+      {
+         group_squad.GetJ()[i] = i;
       }
    }
 }
+
+//   if (mesh_type == "$MeshFormat") // Gmsh
+//  {
+//
+//    // Copy Mesh at some point into Mesh field ? Mesh(pmesh, false)
+//     cerr << "LINE "<< __LINE__ << endl;
+//     ListOfIntegerSets  groups;
+//     IntegerSet         group;
+//     Array<int>         svert_group;
+//     Array<int>         sedge_group;
+//     Array<int>         ssurf_group;
+//     Array<int>         svolu_group;
+//
+//     gtopo.SetComm(MyComm);
+//     group.Recreate(1, &MyRank);
+//     groups.Insert(group);
+//
+//     int i;
+//     cerr << "LINE "<< __LINE__ << endl;
+//     {
+//	IntVectMap &pgpart = Mesh::gmesh->PointsGPart;
+//	svert_group.SetSize(pgpart.size());
+//	i = 0;
+//	for (auto const& it : pgpart) {
+//	  int tag = it.first;
+//	  const std::vector<int> &vint = it.second;
+//	  group.Recreate(vint.size(),&vint[0]);
+//	  svert_group[i++] = groups.Insert(group) - 1;
+//	}
+//     }
+//     cerr << "LINE "<< __LINE__ << endl;
+//     {
+//	IntVectMap &cgpart = Mesh::gmesh->CurvesGPart;
+//	sedge_group.SetSize(cgpart.size());
+//	i = 0;
+//	for (auto const& it : cgpart) {
+//	  int tag = it.first;
+//	  const std::vector<int> &vint = it.second;
+//	  group.Recreate(vint.size(),&vint[0]);
+//	  sedge_group[i++] = groups.Insert(group) - 1;
+//	}
+//     }
+//     cerr << "LINE "<< __LINE__ << endl;
+//     {
+//	IntVectMap &sgpart = Mesh::gmesh->SurfacesGPart;
+//	// STOP
+//	ssurf_group.SetSize(sgpart.size());
+//	i = 0;
+//	for (auto const& it : sgpart) {
+//	  int tag = it.first;
+//	  const std::vector<int> &vint = it.second;
+//	  group.Recreate(vint.size(),&vint[0]);
+//	  ssurf_group[i++] = groups.Insert(group) - 1;
+//	}
+//     }
+//     cerr << "LINE "<< __LINE__ << endl;
+//     {
+//	IntVectMap &vgpart = Mesh::gmesh->VolumesGPart;
+//	// STOP
+//	svolu_group.SetSize(vgpart.size());
+//	i = 0;
+//	for (auto const& it : vgpart) {
+//	  int tag = it.first;
+//	  const std::vector<int> &vint = it.second;
+//	  group.Recreate(vint.size(),&vint[0]);
+//	  svolu_group[i++] = groups.Insert(group) - 1;
+//	}
+//     }
+//     cerr << "LINE "<< __LINE__ << endl;
+//
+//     
+//     // Check BuildLocalVertices, do we do the same thing ?
+//     // Look FindSharedEdges and FindSharedVertices
+//     // Determine shared faces
+//     //   Array<Pair<long, apf::MeshEntity*> > sfaces;
+//     // Loop on sfaces
+//     // .. sfaces.Append(Pair<long,apf::MeshEntity*>(id, ent));
+//     // sfaces.Sort();
+//     //  for (int i = 0; i < sfaces.Size(); i++)
+//     //  {
+//     //     group.Recreate(2, eleRanks);
+//     //     sfaces[i].one = groups.Insert(group) - 1;
+//     //  }
+//     // Determine shared edges
+//     //   Array<Pair<long, apf::MeshEntity*> > sedges;
+//     // Determine shared vertices
+//     //   Array<Pair<int, apf::MeshEntity*> > sverts;
+//     //   Array<int> svert_group;
+//     //   group.Recreate(eleRanks.Size(), eleRanks);
+//     //   svert_group[i] = groups.Insert(group) - 1;
+//     // shared_edges.SetSize(sedges.Size());
+//     // shared_edges = ...
+//     // shared_trias = ...
+//     // shared_quads = ...
+//     // group_stria  = 
+//     // group_squad  = 
+//     // group_sedge  = 
+//     // group_svert  = 
+//     // svert_lvert  =  // Copy the shared-to-local index Arrays
+//     // sedge_ledge
+//     MFEM_ABORT("load_shared_entities done");
+//
+//     // Build the group communication topology
+//     gtopo.Create(groups, 822);
+//     
+//     // Determine sedge_ledge and sface_lface
+//     FinalizeParTopo();
+//     
+//     
+//  }
 
 ParMesh::ParMesh(ParMesh *orig_mesh, int ref_factor, int ref_type)
 {
