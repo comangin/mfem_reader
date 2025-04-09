@@ -2708,14 +2708,8 @@ private:
 public:
   // Specific to GMSH 4.1 format (begin)
    bool parallel = false;
-   IntVectMap PointsGPhysical;
-   IntVectMap CurvesGPhysical;
-   IntVectMap SurfacesGPhysical;
-   IntVectMap VolumesGPhysical;
-   IntVectMap PointsGPart;
-   IntVectMap CurvesGPart;
-   IntVectMap SurfacesGPart;
-   IntVectMap VolumesGPart;
+   IntVectMap GPhys[4];
+   IntVectMap GPart[4];
    FourUIntMap point_belonging;
    FourUIntMap curve_belonging;
    FourUIntMap surface_belonging;

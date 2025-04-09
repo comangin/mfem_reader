@@ -1542,16 +1542,14 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
    }
    gmesh = new GMSHData();
 
-   IntVectMap &PointsGPhysical=gmesh->PointsGPhysical;
-   IntVectMap &CurvesGPhysical=gmesh->CurvesGPhysical;
-   IntVectMap &SurfacesGPhysical=gmesh->SurfacesGPhysical;
-   IntVectMap &VolumesGPhysical=gmesh->VolumesGPhysical;
-   IntVectMap GPhys[4] ={gmesh->PointsGPhysical, gmesh->CurvesGPhysical, gmesh->SurfacesGPhysical, gmesh->VolumesGPhysical};
-   IntVectMap &PointsGPart=gmesh->PointsGPart;
-   IntVectMap &CurvesGPart=gmesh->CurvesGPart;
-   IntVectMap &SurfacesGPart=gmesh->SurfacesGPart;
-   IntVectMap &VolumesGPart=gmesh->VolumesGPart;
-   IntVectMap GPart[4] ={gmesh->PointsGPart, gmesh->CurvesGPart, gmesh->SurfacesGPart, gmesh->VolumesGPart};
+   IntVectMap &PointsGPhysical=gmesh->GPhys[0];
+   IntVectMap &CurvesGPhysical=gmesh->GPhys[1];
+   IntVectMap &SurfacesGPhysical=gmesh->GPhys[2];
+   IntVectMap &VolumesGPhysical=gmesh->GPhys[3];
+   IntVectMap &PointsGPart=gmesh->GPart[0];
+   IntVectMap &CurvesGPart=gmesh->GPart[1];
+   IntVectMap &SurfacesGPart=gmesh->GPart[2];
+   IntVectMap &VolumesGPart=gmesh->GPart[3];
    FourUIntMap &pbelong=gmesh->point_belonging;
    FourUIntMap &cbelong=gmesh->curve_belonging;
    FourUIntMap &sbelong=gmesh->surface_belonging;
@@ -1671,16 +1669,16 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                   vertices_map[index[j]] = ver;
 		  std::array<uint64_t,4> myv = std::array<uint64_t,4>{ver, DimEntity, TagEntity, 0};
 		  pbelong[index[j]] = myv;
-		  std::cout << " point read " << index[j] << " dim_e:" << \
-		    DimEntity << " tag_e:" << TagEntity << " " << \
-		    GPart[DimEntity][TagEntity].size() <<endl;
-		  if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
-		    {
-		      std::cout << " point shared " << tag << " dim_e:" << \
-			DimEntity << " tag_e:" << TagEntity << " " <<	\
-			GPart[DimEntity][TagEntity].size();
-		      
-		     }
+//		  std::cout << " point read " << index[j] << " dim_e:" << \
+//		    DimEntity << " tag_e:" << TagEntity << " " << \
+//		    GPart[DimEntity][TagEntity].size() <<endl;
+//		  if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
+//		    {
+//		      std::cout << " point shared " << tag << " dim_e:" << \
+//			DimEntity << " tag_e:" << TagEntity << " " <<	\
+//			GPart[DimEntity][TagEntity].size();
+//		      
+//		     }
                   for (int ci = 0; ci < gmsh_dim; ++ci)
                     {
                       bb_min[ci] = (ver == 0) ? coord[ci] :
@@ -1824,6 +1822,10 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
 	    SurfacesGPart[tag].push_back(partid);
+	  }
+	  {
+	  std::cout << " surface partent " << tag << " " << n_parts <<	" vs " << \
+	    (gmesh->GPart[2][tag]).size() << " vs " << SurfacesGPart[tag].size() << endl;
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
@@ -2730,13 +2732,13 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         new Segment(&vert_indices[0], phys_domain));
 		     std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_1D.size()-1, DimEntity, TagEntity, 1};
 		     cbelong[no_elt] = myv; 
-		     if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
-		     {
-		       std::cout << " segment noelt " << no_elt << " dim_e:" << \
-			 DimEntity << " tag_e:" << TagEntity << " " << \
-			 GPart[DimEntity][TagEntity].size();
-		       
-		     }
+//		     if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
+//		     {
+//		       std::cout << " segment noelt " << no_elt << " dim_e:" << \
+//			 DimEntity << " tag_e:" << TagEntity << " " << \
+//			 GPart[DimEntity][TagEntity].size();
+//		       
+//		     }
                      if (type_of_element != 1)
                      {
                         Array<int> * hov = new Array<int>;
@@ -2762,13 +2764,13 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                            new Triangle(&vert_indices[0], phys_domain));
 			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_2D.size()-1, DimEntity, TagEntity, 2};
 			sbelong[no_elt] = myv; 
-			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
-			  {
-			    std::cout << " tria noelt " << no_elt << " dim_e:" << \
-			      DimEntity << " tag_e:" << TagEntity << " " << \
-			      GPart[DimEntity][TagEntity].size();
-			    
-			  }
+//			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
+//			  {
+//			    std::cout << " tria noelt " << no_elt << " dim_e:" << \
+//			      DimEntity << " tag_e:" << TagEntity << " " << \
+//			      GPart[DimEntity][TagEntity].size();
+//			    
+//			  }
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2793,13 +2795,13 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                            new Quadrilateral(&vert_indices[0], phys_domain));
 			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_2D.size()-1, DimEntity, TagEntity, 3};
 			sbelong[no_elt] = myv; 
-			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
-			  {
-			    std::cout << " quad noelt " << no_elt << " dim_e:" << \
-			      DimEntity << " tag_e:" << TagEntity << " " << \
-			      GPart[DimEntity][TagEntity].size();
-			    
-			  }
+//			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
+//			  {
+//			    std::cout << " quad noelt " << no_elt << " dim_e:" << \
+//			      DimEntity << " tag_e:" << TagEntity << " " << \
+//			      GPart[DimEntity][TagEntity].size();
+//			    
+//			  }
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2830,13 +2832,13 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 #endif
 			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_3D.size()-1, DimEntity, TagEntity, 4};
 			vbelong[no_elt] = myv;
-			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
-			  {
-			    std::cout << " tet noelt " << no_elt << " dim_e:" << \
-			      DimEntity << " tag_e:" << TagEntity << " " << \
-			      GPart[DimEntity][TagEntity].size();
-			    
-			  }
+//			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
+//			  {
+//			    std::cout << " tet noelt " << no_elt << " dim_e:" << \
+//			      DimEntity << " tag_e:" << TagEntity << " " << \
+//			      GPart[DimEntity][TagEntity].size();
+//			    
+//			  }
 
                         if (el_order > 1)
                         {
@@ -2862,13 +2864,13 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                            new Hexahedron(&vert_indices[0], phys_domain));
 			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_3D.size()-1, DimEntity, TagEntity, 5};
 			vbelong[no_elt] = myv; 
-			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
-			  {
-			    std::cout << " hexa noelt " << no_elt << " dim_e:" << \
-			      DimEntity << " tag_e:" << TagEntity << " " << \
-			      GPart[DimEntity][TagEntity].size();
-			    
-			  }
+//			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
+//			  {
+//			    std::cout << " hexa noelt " << no_elt << " dim_e:" << \
+//			      DimEntity << " tag_e:" << TagEntity << " " << \
+//			      GPart[DimEntity][TagEntity].size();
+//			    
+//			  }
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
