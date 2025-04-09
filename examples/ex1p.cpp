@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
    Device device(device_config);
    if (myid == 0) { device.Print(); }
 
-#if 1
+#if 0
    // 4. Read the (serial) mesh from the given mesh file on all processors.  We
    //    can handle triangular, quadrilateral, tetrahedral, hexahedral, surface
    //    and volume meshes with the same code.
@@ -150,7 +150,6 @@ int main(int argc, char *argv[])
    //    parallel mesh is defined, the serial mesh can be deleted.
    ParMesh pmesh(MPI_COMM_WORLD, mesh);
    mesh.Clear();
-   cout << __LINE__  << " NC mesh " << pmesh.Nonconforming() << std::endl;
 #else
    string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
    ifstream ifs(fname);
@@ -246,7 +245,6 @@ int main(int argc, char *argv[])
    if (static_cond) { a.EnableStaticCondensation(); }
    a.Assemble();
 
-   cout << __LINE__  << " NC mesh " << pmesh.Nonconforming() << std::endl;
    OperatorPtr A;
    Vector B, X;
    a.FormLinearSystem(ess_tdof_list, x, b, A, X, B);
@@ -284,7 +282,6 @@ int main(int argc, char *argv[])
 
    // 14. Recover the parallel grid function corresponding to X. This is the
    //     local finite element solution on each processor.
-   std::cout << __FILE__ << " " << __LINE__  << " RecoverFEMsol " << std::endl;
    a.RecoverFEMSolution(X, b, x);
 
    // 15. Save the refined mesh and the solution in parallel. This output can

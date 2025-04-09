@@ -1036,7 +1036,6 @@ void ParFiniteElementSpace::GetEssentialTrueDofs(const Array<int>
    Array<int> ess_dofs, true_ess_dofs;
 
    GetEssentialVDofs(bdr_attr_is_ess, ess_dofs, component);
-   std::cout << __FILE__ << " " << __LINE__  << " ParFiniteElementSpace::GetEssentialTrueDofs " << std::endl;
    GetRestrictionMatrix()->BooleanMult(ess_dofs, true_ess_dofs);
 
 #ifdef MFEM_DEBUG
@@ -1226,7 +1225,6 @@ const Operator *ParFiniteElementSpace::GetRestrictionOperator() const
 
 void ParFiniteElementSpace::ExchangeFaceNbrData()
 {
-   std::cout << __LINE__  << " ParFiniteElementSpace::ExchangeFaceNbrData " << std::endl;
    if (num_face_nbr_dofs >= 0) { return; }
 
    pmesh->ExchangeFaceNbrData();
@@ -1566,8 +1564,7 @@ void ParFiniteElementSpace::ConstructTrueDofs()
    gcomm = new GroupCommunicator(gt);
    Table &group_ldof = gcomm->GroupLDofTable();
 
-  std::cout << __FILE__ << " " << __LINE__  << " ParFiniteElementSpace::ConstructTrueDofs " << std::endl;
-  GetGroupComm(*gcomm, 1, &ldof_sign);
+   GetGroupComm(*gcomm, 1, &ldof_sign);
 
    // Define ldof_group and mark ldof_ltdof with
    //   -1 for ldof that is ours
@@ -3329,7 +3326,6 @@ void ParFiniteElementSpace::Destroy()
 void ParFiniteElementSpace::CopyProlongationAndRestriction(
    const FiniteElementSpace &fes, const Array<int> *perm)
 {
-   std::cout << __FILE__ << " " << __LINE__  << " ParFiniteElementSpace::CopyProlongationAndRestriction " << std::endl;
    const ParFiniteElementSpace *pfes
       = dynamic_cast<const ParFiniteElementSpace*>(&fes);
    MFEM_VERIFY(pfes != NULL, "");
@@ -3391,7 +3387,6 @@ void ParFiniteElementSpace::CopyProlongationAndRestriction(
 void ParFiniteElementSpace::GetTrueTransferOperator(
    const FiniteElementSpace &coarse_fes, OperatorHandle &T) const
 {
-   std::cout << __FILE__ << " " << __LINE__  << " ParFiniteElementSpace::GetTrueTransferOp " << std::endl;
    OperatorHandle Tgf(T.Type() == Operator::Hypre_ParCSR ?
                       Operator::MFEM_SPARSEMAT : Operator::ANY_TYPE);
    GetTransferOperator(coarse_fes, Tgf);
@@ -3617,7 +3612,6 @@ void ConformingProlongationOperator::Mult(const Vector &x, Vector &y) const
    }
    else
    {
-      std::cout << __FILE__ << " " << __LINE__  << " ConformingProlongationOperator::Mult " << std::endl;
       gc.BcastBegin(const_cast<real_t*>(xdata), in_layout);
    }
 
@@ -3633,7 +3627,6 @@ void ConformingProlongationOperator::Mult(const Vector &x, Vector &y) const
    const int out_layout = 0; // 0 - output is ldofs array
    if (!local)
    {
-      std::cout << __FILE__ << " " << __LINE__  << " ConformingProlongationOperator::Mult " << std::endl;
       gc.BcastEnd(ydata, out_layout);
    }
 }

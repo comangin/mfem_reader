@@ -462,11 +462,6 @@ void BilinearForm::AssembleBdrElementMatrix(
 
 void BilinearForm::Assemble(int skip_zeros)
 {
-  static bool first = true;
-  if (first) {
-    std::cout << __FILE__ << " " << __LINE__  << " BilinearForm::Assemble " << std::endl;
-    first = false;
-  }
    if (ext)
    {
       ext->Assemble();
