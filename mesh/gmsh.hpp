@@ -12,6 +12,15 @@
 #ifndef MFEM_GMSH
 #define MFEM_GMSH
 
+#include "../fem/fespace.hpp"
+#include "../fem/gridfunc.hpp"
+#include "../fem/pgridfunc.hpp"
+#include "../fem/coefficient.hpp"
+#include "../fem/bilininteg.hpp"
+#include <string>
+#include <iostream>
+
+
 namespace mfem
 {
 
@@ -49,6 +58,23 @@ void GmshHOWedgeMapping(int order, int *map);
 void GmshHOPyramidMapping(int order, int *map);
 
 ///@}
+
+
+#ifdef MFEM_USE_MPI
+/// Class for GMSH parallel meshes
+class ParGmshMesh : public ParMesh
+{
+private:
+public: 
+   /// Build a parallel MFEM mesh from a parallel PUMI mesh.
+  ParGmshMesh(MPI_Comm comm, std::string mesh_file,
+               int refine = 1, bool fix_orientation = true);
+
+   virtual ~ParGmshMesh() {}
+};
+
+#endif  // MFEM_USE_MPI
+
 
 } // namespace mfem
 

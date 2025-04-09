@@ -38,6 +38,7 @@
 #include "pmesh.hpp"
 #include "submesh/psubmesh.hpp"
 #include "submesh/ptransfermap.hpp"
+#include "gmsh.hpp"
 #endif
 
 #ifdef MFEM_USE_PUMI

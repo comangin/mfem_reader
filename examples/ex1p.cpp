@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
    Device device(device_config);
    if (myid == 0) { device.Print(); }
 
-#if 1
+#if 0
    // 4. Read the (serial) mesh from the given mesh file on all processors.  We
    //    can handle triangular, quadrilateral, tetrahedral, hexahedral, surface
    //    and volume meshes with the same code.
@@ -153,8 +153,8 @@ int main(int argc, char *argv[])
 #else
    string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
    ifstream ifs(fname);
-   MFEM_VERIFY(ifs.good(), "Checkpoint file " << fname << " not found.");
-   ParMesh pmesh(MPI_COMM_WORLD, ifs);
+   MFEM_VERIFY(ifs.good(), "Mesh file " << fname << " not found.");
+   ParMesh pmesh = ParGmshMesh(MPI_COMM_WORLD, fname);
    int dim = pmesh.Dimension();
 #endif
    
