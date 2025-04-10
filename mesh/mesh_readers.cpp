@@ -1674,11 +1674,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 		  if (it != myDimMap.end())
 		    {
 		      const vector<int> &myVect = (it->second);
-		      if (myVect.size() > 0) {
-			std::cout << myrank << " point checked " << index[j] << endl;
-			auto ii = std::find(myVect.begin(), myVect.end(), myrank+1);
-			MFEM_VERIFY(ii != myVect.end(),
-				    "Gmsh file : Problem reading irrelevant node");
+		      if (myVect.size() > 1) {
+			std::cout << "T" << myrank << " point shared " << index[j] << endl;
 		      }
 		    }
 //		  if (gmesh->parallel && gmesh->GPart[DimEntity][TagEntity].size() > 1)

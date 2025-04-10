@@ -157,7 +157,6 @@ int main(int argc, char *argv[])
    ParMesh pmesh = ParGmshMesh(MPI_COMM_WORLD, fname);
    int dim = pmesh.Dimension();
 #endif
-   MFEM_ABORT("artificial abort");
    {
       int par_ref_levels = 2;
       for (int l = 0; l < par_ref_levels; l++)

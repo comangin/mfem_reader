@@ -492,10 +492,40 @@ void GmshHOPyramidMapping(int order, int *map)
 ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
                          int refine, int generate_edges, bool fix_orientation)
 {
+   // Set the communicator for gtopo
+   gtopo.SetComm(comm);
+
+   MyComm = comm;
+   MPI_Comm_size(MyComm, &NRanks);
+   MPI_Comm_rank(MyComm, &MyRank);
+
    std::ifstream ifs(gmsh_file);
    MFEM_VERIFY(ifs.good(), "Mesh file " << gmsh_file << " not found.");
    Mesh mesh(gmsh_file, refine, generate_edges, fix_orientation);
+   IntVectMap *GPart = mesh.gmesh->GPart;
+   FourUIntMap &vinfo = mesh.gmesh->vertices_info;
+   // Get the list of shared vertices
+   for (auto const& vit : vinfo)
+     {
+       const int gmsh_vindex = vit.first;
+       const std::array<uint64_t,4> &myv = vit.second;
+       const int ver = myv[0];
+       const int DimEntity = myv[1];
+       const int TagEntity = myv[2];
+       const int data = myv[3];
+       IntVectMap &myDimMap = GPart[DimEntity];
+       IntVectMap::const_iterator it = myDimMap.find(TagEntity);
+       if (it != myDimMap.end())
+	 {
+	   const std::vector<int> &myVect = (it->second);
+	   if (myVect.size() > 1) {
+	     std::cout << "S" << MyRank << " point shared " << gmsh_vindex << std::endl;
+	   }
+	 }
+     }
+   
 
+   MFEM_ABORT("artificial abort");
 }
 
 #endif  // MFEM_USE_MPI
