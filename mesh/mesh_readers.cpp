@@ -1551,6 +1551,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
    int rank;
    MPI_Comm_rank(GetGlobalMPI_Comm(), &rank);
    const int myrank = rank;
+   gmesh->parallel = true;
 #endif
 
    getline(input, buff);
@@ -1671,13 +1672,13 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 		  vinfo[index[j]] = myv;
 		  IntVectMap &myDimMap = gmesh->GPart[DimEntity];
 		  IntVectMap::const_iterator it = myDimMap.find(TagEntity);
-		  if (it != myDimMap.end())
-		    {
-		      const vector<int> &myVect = (it->second);
-		      if (myVect.size() > 1) {
-			std::cout << "T" << myrank << " point shared " << index[j] << endl;
-		      }
-		    }
+//		  if (it != myDimMap.end())
+//		    {
+//		      const vector<int> &myVect = (it->second);
+//		      if (myVect.size() > 1) {
+//			std::cout << "T" << myrank << " point shared " << index[j] << endl;
+//		      }
+//		    }
 //		  if (gmesh->parallel && gmesh->GPart[DimEntity][TagEntity].size() > 1)
 //		    {
 //		      std::cout << " point shared " << index[j] << " dim_e:" << \
@@ -1781,7 +1782,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	int NumParts, NumGhosts;
 	int NumPoints, NumCurves, NumSurfaces, NumVolumes;
 
-	gmesh->parallel = true;
+	MFEM_VERIFY(gmesh->parallel,
+		    "GMSH reader detects partioned entities in a serial run");
 	getline(input, buff);
 	input >> NumParts;
 	input >> NumGhosts;
@@ -2934,7 +2936,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                       << "Setting element attributes to 1.\n\n";
          }
 
-	 cerr << "MeshReader LINE "<< __LINE__ << endl;
          if (!elements_3D.empty())
          {
             Dim = 3;
@@ -3015,7 +3016,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
             return;
          }
 
-	 cerr << "MeshReader LINE "<< __LINE__ << endl;
          if (mesh_order > 1)
          {
             curved = 1;
@@ -3133,7 +3133,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                o += nv;
             }
          }
-	 cerr << "MeshReader LINE "<< __LINE__ << endl;
 
          // Delete any high order element to vertex connectivity
          for (size_t el=0; el<ho_verts_1D.size(); el++)
@@ -3179,13 +3178,11 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
             if (ho_pyr[ord] != NULL) { delete [] ho_pyr[ord]; }
          }
 
-	 cerr << "MeshReader LINE "<< __LINE__ << endl;
          // Suppress warnings (MFEM_CONTRACT_VAR does not work here with nvcc):
          ++n_partitions;
          ++elem_domain;
          MFEM_CONTRACT_VAR(n_partitions);
          MFEM_CONTRACT_VAR(elem_domain);
-	 cerr << "MeshReader LINE "<< __LINE__ << endl;
 
       } // section '$Elements'
       else if (buff == "$PhysicalNames") // Named element sets

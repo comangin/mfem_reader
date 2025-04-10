@@ -502,9 +502,25 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    std::ifstream ifs(gmsh_file);
    MFEM_VERIFY(ifs.good(), "Mesh file " << gmsh_file << " not found.");
    Mesh mesh(gmsh_file, refine, generate_edges, fix_orientation);
+
+
+   ListOfIntegerSets  groups;
+   IntegerSet         group;
+
+   // The first group is the local one
+   group.Recreate(1, &MyRank);
+   groups.Insert(group);
+
+   MFEM_ASSERT(Dim >= 3 || Dim < 1 || GetNFaces() == 0,
+               "[proc " << MyRank << "]: invalid state");
+
+
+   // Detrmine shared vertices
    IntVectMap *GPart = mesh.gmesh->GPart;
    FourUIntMap &vinfo = mesh.gmesh->vertices_info;
-   // Get the list of shared vertices
+   Array<int> eleRanks;
+   // Should we sort sverts ?
+   std::vector<int> svert_group, sverts;
    for (auto const& vit : vinfo)
      {
        const int gmsh_vindex = vit.first;
@@ -515,17 +531,71 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        const int data = myv[3];
        IntVectMap &myDimMap = GPart[DimEntity];
        IntVectMap::const_iterator it = myDimMap.find(TagEntity);
-       if (it != myDimMap.end())
-	 {
-	   const std::vector<int> &myVect = (it->second);
-	   if (myVect.size() > 1) {
-	     std::cout << "S" << MyRank << " point shared " << gmsh_vindex << std::endl;
-	   }
-	 }
+       MFEM_VERIFY(it != myDimMap.end(), "Error reading GMSH file");
+       // If more than one proc sharing this vertex, do stuff
+       const std::vector<int> &shared_procs = (it->second);
+       int shared_psize = shared_procs.size();
+       if (shared_psize > 1) {
+	 eleRanks.SetSize(shared_psize);
+	 for (int i=0; i<shared_psize; i++) eleRanks[i]=shared_procs[i];
+	 group.Recreate(shared_psize, eleRanks);
+	 sverts.push_back(ver);
+	 svert_group.push_back(groups.Insert(group) - 1);
+       }
      }
-   
+   std::cerr << "GMSHCPP LINE "<< __LINE__ << std::endl;
+   group_stria.MakeI(groups.Size()-1);
+   group_squad.MakeI(groups.Size()-1);
+   group_stria.MakeJ();
+   group_squad.MakeJ();
+   group_stria.ShiftUpI();
+   group_squad.ShiftUpI();
 
-   MFEM_ABORT("artificial abort");
+   group_sedge.MakeI(groups.Size()-1);
+   group_sedge.MakeJ();
+   group_sedge.ShiftUpI();
+   std::cerr << "GMSHCPP LINE "<< __LINE__ << std::endl;
+
+   // Build group_svert
+   group_svert.MakeI(groups.Size()-1);
+   for (int i = 0; i < svert_group.size(); i++)
+   {
+      group_svert.AddAColumnInRow(svert_group[i]);
+   }
+   group_svert.MakeJ();
+   for (int i = 0; i < svert_group.size(); i++)
+   {
+      group_svert.AddConnection(svert_group[i], i);
+   }
+   group_svert.ShiftUpI();
+ 
+   std::cerr << "GMSHCPP LINE "<< __LINE__ << std::endl;
+   shared_edges.SetSize(0);  
+   sedge_ledge. SetSize(0);
+
+   svert_lvert.SetSize(sverts.size());
+   for (int i = 0; i < sverts.size(); i++)
+   {
+      svert_lvert[i] = sverts[i];
+   }
+
+   MPI_Barrier(MyComm);
+   std::cerr << "GMSHCPP LINE "<< __LINE__ << std::endl;
+   // Build the group communication topology
+   gtopo.Create(groups, 822);
+
+   // Determine sedge_ledge and sface_lface
+   FinalizeParTopo();
+
+      // Set nodes for higher order mesh
+   int curved = 0;
+   if (curved) // curved mesh
+   {
+     //???
+   }
+   Finalize(refine, fix_orientation);
+   MPI_Barrier(MyComm);
+   std::cerr << "ending shared group construction" << std::endl;
 }
 
 #endif  // MFEM_USE_MPI
