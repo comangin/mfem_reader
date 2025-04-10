@@ -2710,10 +2710,7 @@ public:
    bool parallel = false;
    IntVectMap GPhys[4];
    IntVectMap GPart[4];
-   FourUIntMap point_belonging;
-   FourUIntMap curve_belonging;
-   FourUIntMap surface_belonging;
-   FourUIntMap volume_belonging;
+   FourUIntMap vertices_info;
    // Specific to GMSH 4.1 format (end)
 
 };

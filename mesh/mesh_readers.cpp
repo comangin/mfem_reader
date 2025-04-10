@@ -1544,10 +1544,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 
    IntVectMap *GPhys = gmesh->GPhys;
    IntVectMap *GPart = gmesh->GPart;
-   FourUIntMap &pbelong=gmesh->point_belonging;
-   FourUIntMap &cbelong=gmesh->curve_belonging;
-   FourUIntMap &sbelong=gmesh->surface_belonging;
-   FourUIntMap &vbelong=gmesh->volume_belonging;
+   FourUIntMap &vinfo=gmesh->vertices_info;
 #ifndef MFEM_USE_MPI
    const int myrank = 0;
 #else
@@ -1669,8 +1666,9 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                     } 
                   vertices[ver] = Vertex(coord, gmsh_dim);
                   vertices_map[index[j]] = ver;
-		  std::array<uint64_t,4> myv = std::array<uint64_t,4>{ver, DimEntity, TagEntity, 0};
-		  pbelong[index[j]] = myv;
+		  std::array<uint64_t,4> myv =
+		    std::array<uint64_t,4>{ver, DimEntity, TagEntity, 0};
+		  vinfo[index[j]] = myv;
 		  IntVectMap &myDimMap = gmesh->GPart[DimEntity];
 		  IntVectMap::const_iterator it = myDimMap.find(TagEntity);
 		  if (it != myDimMap.end())
@@ -1678,15 +1676,9 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 		      const vector<int> &myVect = (it->second);
 		      if (myVect.size() > 0) {
 			std::cout << myrank << " point checked " << index[j] << endl;
-			//			auto ii = std::find(myVect.begin(), myVect.end(), myrank+1);
-//			if ( ii == myVect.end() )
-//			  {
-//			    MFEM_ABORT("Gmsh file : Problem reading irrelevant node");
-//			  }
-//			else
-//			  {
-//			    std::cout << " location of rank " << ii-myVect.begin() << std::endl;
-//			  }
+			auto ii = std::find(myVect.begin(), myVect.end(), myrank+1);
+			MFEM_VERIFY(ii != myVect.end(),
+				    "Gmsh file : Problem reading irrelevant node");
 		      }
 		    }
 //		  if (gmesh->parallel && gmesh->GPart[DimEntity][TagEntity].size() > 1)
@@ -2729,8 +2721,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                   {
                      elements_1D.push_back(
                         new Segment(&vert_indices[0], phys_domain));
-		     std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_1D.size()-1, DimEntity, TagEntity, 1};
-		     cbelong[no_elt] = myv; 
 //		     if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //		     {
 //		       std::cout << " segment noelt " << no_elt << " dim_e:" << \
@@ -2761,8 +2751,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                      {
                         elements_2D.push_back(
                            new Triangle(&vert_indices[0], phys_domain));
-			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_2D.size()-1, DimEntity, TagEntity, 2};
-			sbelong[no_elt] = myv; 
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " tria noelt " << no_elt << " dim_e:" << \
@@ -2792,8 +2780,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                      {
                         elements_2D.push_back(
                            new Quadrilateral(&vert_indices[0], phys_domain));
-			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_2D.size()-1, DimEntity, TagEntity, 3};
-			sbelong[no_elt] = myv; 
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " quad noelt " << no_elt << " dim_e:" << \
@@ -2829,8 +2815,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         elements_3D.push_back(
                            new Tetrahedron(&vert_indices[0], phys_domain));
 #endif
-			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_3D.size()-1, DimEntity, TagEntity, 4};
-			vbelong[no_elt] = myv;
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " tet noelt " << no_elt << " dim_e:" << \
@@ -2861,8 +2845,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         el_order--;
                         elements_3D.push_back(
                            new Hexahedron(&vert_indices[0], phys_domain));
-			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_3D.size()-1, DimEntity, TagEntity, 5};
-			vbelong[no_elt] = myv; 
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " hexa noelt " << no_elt << " dim_e:" << \
@@ -2892,8 +2874,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         el_order--;
                         elements_3D.push_back(
                            new Wedge(&vert_indices[0], phys_domain));
-			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_3D.size()-1, DimEntity, TagEntity, 6};
-			vbelong[no_elt] = myv; 
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2916,8 +2896,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         el_order--;
                         elements_3D.push_back(
                            new Pyramid(&vert_indices[0], phys_domain));
-			std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_3D.size()-1, DimEntity, TagEntity, 7};
-			vbelong[no_elt] = myv; 
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2931,8 +2909,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                   {
                      elements_0D.push_back(
                         new Point(&vert_indices[0], phys_domain));
-		     std::array<uint64_t,4> myv = std::array<uint64_t,4>{elements_0D.size()-1, DimEntity, TagEntity, 0};
-		     vbelong[no_elt] = myv; 
                      break;
                   }
                   default: // any other element
