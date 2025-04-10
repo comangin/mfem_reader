@@ -1669,14 +1669,11 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                   vertices_map[index[j]] = ver;
 		  std::array<uint64_t,4> myv = std::array<uint64_t,4>{ver, DimEntity, TagEntity, 0};
 		  pbelong[index[j]] = myv;
-//		  std::cout << " point read " << index[j] << " dim_e:" << \
-//		    DimEntity << " tag_e:" << TagEntity << " " << \
-//		    GPart[DimEntity][TagEntity].size() <<endl;
-//		  if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
+//		  if (gmesh->parallel && gmesh->GPart[DimEntity][TagEntity].size() > 1)
 //		    {
-//		      std::cout << " point shared " << tag << " dim_e:" << \
+//		      std::cout << " point shared " << index[j] << " dim_e:" << \
 //			DimEntity << " tag_e:" << TagEntity << " " <<	\
-//			GPart[DimEntity][TagEntity].size();
+//			gmesh->GPart[DimEntity][TagEntity].size()  << std::endl;;
 //		      
 //		     }
                   for (int ci = 0; ci < gmsh_dim; ++ci)
@@ -1822,10 +1819,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
 	    SurfacesGPart[tag].push_back(partid);
-	  }
-	  {
-	  std::cout << " surface partent " << tag << " " << n_parts <<	" vs " << \
-	    (gmesh->GPart[2][tag]).size() << " vs " << SurfacesGPart[tag].size() << endl;
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
