@@ -501,7 +501,12 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 
    std::ifstream ifs(gmsh_file);
    MFEM_VERIFY(ifs.good(), "Mesh file " << gmsh_file << " not found.");
-   Mesh mesh(gmsh_file, refine, generate_edges, fix_orientation);
+   std::string mesh_type;
+   //TODO : curved and high-order
+   int curved = 0, read_gf=1;
+   ifs >> std::ws;
+   getline(ifs, mesh_type);
+   Mesh::ReadGmshMesh(ifs, curved, read_gf);
 
    
    ListOfIntegerSets  groups;
@@ -513,13 +518,12 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 
    MFEM_ASSERT(Dim >= 3 || Dim < 1 || GetNFaces() == 0,
                "[proc " << MyRank << "]: invalid state");
-
-
-   // Detrmine shared vertices
-   IntVectMap *GPart = mesh.gmesh->GPart;
-   FourUIntMap &vinfo = mesh.gmesh->vertices_info;
+   IntVectMap *GPart = gmesh->GPart;
+   FourUIntMap &vinfo = gmesh->vertices_info;
    Array<int> eleRanks;
-   // Should we sort sverts ?
+
+   // Determine shared vertices
+   // TODO: should we sort sverts ?
    std::vector<int> svert_group, sverts;
    for (auto const& vit : vinfo)
      {
@@ -553,7 +557,6 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    group_sedge.MakeI(groups.Size()-1);
    group_sedge.MakeJ();
    group_sedge.ShiftUpI();
-   std::cerr << "GMSHCPP LINE "<< __LINE__ << std::endl;
 
    // Build group_svert
    group_svert.MakeI(groups.Size()-1);
@@ -568,7 +571,6 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    }
    group_svert.ShiftUpI();
  
-   std::cerr << "GMSHCPP LINE "<< __LINE__ << std::endl;
    shared_edges.SetSize(0);  
    sedge_ledge. SetSize(0);
 
@@ -579,7 +581,6 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    }
 
    MPI_Barrier(MyComm);
-   std::cerr << "GMSHCPP LINE "<< __LINE__ << std::endl;
    // Build the group communication topology
    gtopo.Create(groups, 822);
 
@@ -587,14 +588,11 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    FinalizeParTopo();
 
       // Set nodes for higher order mesh
-   int curved = 0;
    if (curved) // curved mesh
    {
      //???
    }
    Finalize(refine, fix_orientation);
-   MPI_Barrier(MyComm);
-   std::cerr << "ending shared group construction" << std::endl;
 }
 
 #endif  // MFEM_USE_MPI

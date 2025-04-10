@@ -117,35 +117,28 @@ int main(int argc, char *argv[])
    // 4. Read the (serial) mesh from the given mesh file on all processors.  We
    //    can handle triangular, quadrilateral, tetrahedral, hexahedral, surface
    //    and volume, as well as periodic meshes with the same code.
+#if 0
    Mesh *mesh = new Mesh(mesh_file, 1, 1);
-   int dim = mesh->Dimension();
-   int sdim = mesh->SpaceDimension();
-
-   // 5. Refine the serial mesh on all processors to increase the resolution. In
-   //    this example we do 'ref_levels' of uniform refinement. We choose
-   //    'ref_levels' to be the largest number that gives a final mesh with no
-   //    more than 1,000 elements.
-   {
-      int ref_levels =
-         (int)floor(log(1000./mesh->GetNE())/log(2.)/dim);
-      for (int l = 0; l < ref_levels; l++)
-      {
-         mesh->UniformRefinement();
-      }
-   }
-
-   // 6. Define a parallel mesh by a partitioning of the serial mesh. Refine
-   //    this mesh further in parallel to increase the resolution. Once the
-   //    parallel mesh is defined, the serial mesh can be deleted.
    ParMesh *pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
    delete mesh;
-   {
-      int par_ref_levels = 2;
-      for (int l = 0; l < par_ref_levels; l++)
-      {
-         pmesh->UniformRefinement();
-      }
-   }
+#else
+   string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
+   ifstream ifs(fname);
+   MFEM_VERIFY(ifs.good(), "Mesh file " << fname << " not found.");
+   ParMesh *pmesh = new ParGmshMesh(MPI_COMM_WORLD, fname);
+#endif
+   
+   int dim = pmesh->Dimension();
+   int sdim = pmesh->SpaceDimension();
+
+
+//   {
+//      int par_ref_levels = 2;
+//      for (int l = 0; l < par_ref_levels; l++)
+//      {
+//         pmesh->UniformRefinement();
+//      }
+//   }
 
    // 7. Define a parallel finite element space on the parallel mesh. Here we
    //    use the Raviart-Thomas finite elements of the specified order.
