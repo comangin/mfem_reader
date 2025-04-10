@@ -1,8 +1,28 @@
+// We now define several constants to fine-tune how the mesh will be partitioned
+DefineConstant[
+  partitioner = {1, Choices{0="None", 1="Metis", 2="SimplePartition"},
+    Name "Parameters/0Mesh partitioner"}
+  N = {4, Min 1, Max 256, Step 1,
+    Name "Parameters/1Number of partitions"}
+  topology = {1, Choices{0, 1},
+    Name "Parameters/2Create partition topology (BRep)?"}
+  ghosts = {0, Choices{0, 1},
+    Name "Parameters/3Create ghost cells?"}
+  physicals = {0, Choices{0, 1},
+    Name "Parameters/3Create new physical groups?"}
+  write = {1, Choices {0, 1},
+    Name "Parameters/3Write file to disk?"}
+  split = {0, Choices {0, 1},
+    Name "Parameters/4Write one file per partition?"}
+];
+
+partitioner=1;
+
 // Select periodic mesh by setting this to either 0 - standard, 1 - periodic
-periodic = 1;
+periodic = 0;
 
 // Set the geometry order (1, 2, ..., 10 for tetrahedra or 9 for other types)
-order = 3;
+order = 1;
 
 // Set the element type (4 - tetrahedra, 6 - wedges, 8 - hexahedra)
 type = 8;
@@ -26,7 +46,7 @@ narc = 2;
 // Number of elements between surface and interior square
 nshl = 1;
 
-lc = 0.5;
+lc = 0.2;
 a1 = A1 / Sqrt(2.0);
 
 Point(1) = {R2+R1, 0, 0, lc};
@@ -130,24 +150,6 @@ Mesh 3;
 SetOrder order;
 //Mesh.MshFileVersion = 2.2;
 
-// We now define several constants to fine-tune how the mesh will be partitioned
-DefineConstant[
-  partitioner = {0, Choices{0="None", 1="Metis", 2="SimplePartition"},
-    Name "Parameters/0Mesh partitioner"}
-  N = {3, Min 1, Max 256, Step 1,
-    Name "Parameters/1Number of partitions"}
-  topology = {1, Choices{0, 1},
-    Name "Parameters/2Create partition topology (BRep)?"}
-  ghosts = {0, Choices{0, 1},
-    Name "Parameters/3Create ghost cells?"}
-  physicals = {0, Choices{0, 1},
-    Name "Parameters/3Create new physical groups?"}
-  write = {1, Choices {0, 1},
-    Name "Parameters/3Write file to disk?"}
-  split = {0, Choices {0, 1},
-    Name "Parameters/4Write one file per partition?"}
-];
-
 If (partitioner > 0)
   // Should we create the boundary representation of the partition entities?
   Mesh.PartitionCreateTopology = topology;
@@ -165,6 +167,7 @@ If (partitioner > 0)
   // Should we save one mesh file per partition?
   Mesh.PartitionSplitMeshFiles = split;
 Endif
+
 If (partitioner == 1)
   // Use Metis to create N partitions
   PartitionMesh N;
@@ -173,6 +176,7 @@ If (partitioner == 1)
   // min. communication volume), `Mesh.PartitionTriWeight' (weight of
   // triangles), `Mesh.PartitionQuadWeight' (weight of quads), ...
 Endif
+
 If (partitioner == 2)
   // Use the `SimplePartition' plugin to create chessboard-like partitions
   Plugin(SimplePartition).NumSlicesX = N;

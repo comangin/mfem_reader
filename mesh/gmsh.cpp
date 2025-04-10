@@ -503,7 +503,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    MFEM_VERIFY(ifs.good(), "Mesh file " << gmsh_file << " not found.");
    Mesh mesh(gmsh_file, refine, generate_edges, fix_orientation);
 
-
+   
    ListOfIntegerSets  groups;
    IntegerSet         group;
 
@@ -543,7 +543,6 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 	 svert_group.push_back(groups.Insert(group) - 1);
        }
      }
-   std::cerr << "GMSHCPP LINE "<< __LINE__ << std::endl;
    group_stria.MakeI(groups.Size()-1);
    group_squad.MakeI(groups.Size()-1);
    group_stria.MakeJ();

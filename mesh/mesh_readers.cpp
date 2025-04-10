@@ -1670,22 +1670,22 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 		  std::array<uint64_t,4> myv =
 		    std::array<uint64_t,4>{ver, DimEntity, TagEntity, 0};
 		  vinfo[index[j]] = myv;
-		  IntVectMap &myDimMap = gmesh->GPart[DimEntity];
-		  IntVectMap::const_iterator it = myDimMap.find(TagEntity);
-//		  if (it != myDimMap.end())
-//		    {
-//		      const vector<int> &myVect = (it->second);
-//		      if (myVect.size() > 1) {
-//			std::cout << "T" << myrank << " point shared " << index[j] << endl;
-//		      }
-//		    }
-//		  if (gmesh->parallel && gmesh->GPart[DimEntity][TagEntity].size() > 1)
-//		    {
-//		      std::cout << " point shared " << index[j] << " dim_e:" << \
-//			DimEntity << " tag_e:" << TagEntity << " " <<	\
-//			gmesh->GPart[DimEntity][TagEntity].size()  << std::endl;;
-//		      
-//		     }
+//TOREMOVE		  IntVectMap &myDimMap = gmesh->GPart[DimEntity];
+//TOREMOVE		  IntVectMap::const_iterator it = myDimMap.find(TagEntity);
+//TOREMOVE		  if (it != myDimMap.end())
+//TOREMOVE		    {
+//TOREMOVE		      const vector<int> &myVect = (it->second);
+//TOREMOVE		      if (myVect.size() > 1) {
+//TOREMOVE			std::cout << "T" << myrank << " point shared " << index[j] << endl;
+//TOREMOVE		      }
+//TOREMOVE		    }
+//TOREMOVE		  if (gmesh->parallel && gmesh->GPart[DimEntity][TagEntity].size() > 1)
+//TOREMOVE		    {
+//TOREMOVE		      std::cout << " point shared " << index[j] << " dim_e:" << \
+//TOREMOVE			DimEntity << " tag_e:" << TagEntity << " " <<	\
+//TOREMOVE			gmesh->GPart[DimEntity][TagEntity].size()  << std::endl;;
+//TOREMOVE		      
+//TOREMOVE		     }
                   for (int ci = 0; ci < gmsh_dim; ++ci)
                     {
                       bb_min[ci] = (ver == 0) ? coord[ci] :
@@ -1796,7 +1796,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
-	    GPart[0][tag].push_back(partid);
+	    GPart[0][tag].push_back(partid-1);
 	  }
 	  input >> xmax >> ymax >> zmax >> n_tags;
 	  MFEM_VERIFY(GPhys[0][tag].size() == 0, "Internal problem mesh_readers")
@@ -1810,7 +1810,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
-	    GPart[1][tag].push_back(partid);
+	    GPart[1][tag].push_back(partid-1);
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
@@ -1829,7 +1829,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
-	    GPart[2][tag].push_back(partid);
+	    GPart[2][tag].push_back(partid-1);
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
@@ -1848,7 +1848,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
-	    GPart[3][tag].push_back(partid);
+	    GPart[3][tag].push_back(partid-1);
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
@@ -3337,7 +3337,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
       }
    } // we reach the end of the file
 
-   cerr << "MeshReader LINE "<< __LINE__ << endl;
    // Process set names
    if (phys_names_by_dim.size() > 0)
    {
