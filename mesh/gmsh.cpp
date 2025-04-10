@@ -522,6 +522,29 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    FourUIntMap &vinfo = gmesh->vertices_info;
    Array<int> eleRanks;
 
+   // Determine shared faces
+   std::vector<int> sface_group, sfaces;
+   if (Dim > 2)
+   {
+     IntVectMap &surfaceList = GPart[2];
+     for (auto const& surf : surfaceList) {
+       const int tag=surf.first;
+       const std::vector<int> &shared_procs = (surf.second);       
+       bool contains = std::binary_search(shared_procs.begin(),
+					  shared_procs.end(), MyRank);
+       int shared_psize = shared_procs.size();
+       if (contains && shared_psize > 1) {
+	 eleRanks.SetSize(shared_psize);
+	 for (int i=0; i<shared_psize; i++) eleRanks[i]=shared_procs[i];
+	 group.Recreate(shared_psize, eleRanks);
+	 sfaces.push_back(tag); //TODO: change tag here for a local id
+	 std::cerr << "shared sface " << tag << std::endl;
+	 sface_group.push_back(groups.Insert(group) - 1);
+       }
+     }
+       
+   }
+   
    // Determine shared vertices
    // TODO: should we sort sverts ?
    std::vector<int> svert_group, sverts;
