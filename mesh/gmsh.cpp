@@ -524,21 +524,23 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 
    MFEM_ASSERT(Dim >= 3 || Dim < 1 || GetNFaces() == 0,
                "[proc " << MyRank << "]: invalid state");
-   TripleIntVectMap *gmshE = gmesh->gmshE;
-   FourUIntMap &vinfo = gmesh->vertices_info;
+   PairIntVectMap *gmshE = gmesh->gmshE;
+   VerMap &vinfo = gmesh->vertices_info;
    Array<int> eleRanks;
 
    // Determine shared faces
    std::vector<int> sface_group, sfaces;
    if (Dim > 2)
    {
-     TripleIntVectMap &surfaceList = gmshE[2];
-     for (auto const& surf : surfaceList) {
+     PairIntVectMap &sList = gmshE[2];
+     for (auto const& surf : sList) {
        const int tag = surf.first;
-       const std::vector<int> &shared_procs = (surf.second.three);       
+       const std::vector<int> &shared_procs = (surf.second.one);       
        bool contains = std::binary_search(shared_procs.begin(),
 					  shared_procs.end(), MyRank);
        int shared_psize = shared_procs.size();
+       std::cerr << "enum sface " << tag << " sizes " << surf.second.one.size() \
+		 << " " << surf.second.two.size()  << std::endl;
        if (contains && shared_psize > 1) {
 	 eleRanks.SetSize(shared_psize);
 	 for (int i=0; i<shared_psize; i++) eleRanks[i]=shared_procs[i];
@@ -562,14 +564,14 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        const int DimEntity = myv[1];
        const int TagEntity = myv[2];
        const int data = myv[3];
-       TripleIntVectMap &myDimMap = gmshE[DimEntity];
-       TripleIntVectMap::const_iterator it = myDimMap.find(TagEntity);
+       PairIntVectMap &myDimMap = gmshE[DimEntity];
+       PairIntVectMap::const_iterator it = myDimMap.find(TagEntity);
        MFEM_VERIFY(it != myDimMap.end(), "Error reading GMSH file");
        // If more than one proc sharing this vertex, do stuff
-       const std::vector<int> &shared_procs = (it->second.three);
+       const std::vector<int> &shared_procs = (it->second.one);
        const int shared_psize = shared_procs.size();
        if (shared_psize > 1) {
-	 sverts.push_back(Tr_iivi(gmsh_vindex,ver,&(it->second.three)));
+	 sverts.push_back(Tr_iivi(gmsh_vindex,ver,&(it->second.one)));
 	 if (MyRank == 3) std::cout << "list_sh_v1 gmsh_idx " << gmsh_vindex << " ver " << ver << " " << shared_psize << std::endl;
        }
      }

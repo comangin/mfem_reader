@@ -2700,16 +2700,18 @@ public:
 
 
 /** @brief Structure for storing information read from GMSH files concerning the mesh. */
-typedef std::map<int, Triple<std::vector<int>,std::vector<int>,std::vector<int>>> TripleIntVectMap;
-typedef std::map<int, std::array<uint64_t,4>> FourUIntMap;
+typedef std::map<int, Pair<std::vector<int>,std::vector<int>>> PairIntVectMap;
+typedef std::map<int, std::array<uint64_t,4>> VerMap;
+typedef std::map<int, Pair<std::array<int,3>,std::vector<int>>> EltMap;
 class GMSHData
 {
 private:
 public:
   // Specific to GMSH 4.1 format (begin)
    bool parallel = false;
-   TripleIntVectMap gmshE[4];
-   FourUIntMap vertices_info;
+   PairIntVectMap gmshE[4];
+   VerMap vertices_info;
+   EltMap elt_info;
    // Specific to GMSH 4.1 format (end)
 
 };

@@ -1542,8 +1542,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
    }
    gmesh = new GMSHData();
 
-   TripleIntVectMap *gmshE = gmesh->gmshE;
-   FourUIntMap &vinfo=gmesh->vertices_info;
+   PairIntVectMap *gmshE = gmesh->gmshE;
+   VerMap &vinfo=gmesh->vertices_info;
 #ifndef MFEM_USE_MPI
    const int myrank = 0;
 #else
@@ -1795,7 +1795,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
-	    gmshE[0][tag].three.push_back(partid-1);
+	    gmshE[0][tag].one.push_back(partid-1);
 	  }
 	  input >> xmax >> ymax >> zmax >> n_tags;
 	  MFEM_VERIFY(gmshE[0][tag].two.size() == 0, "Internal problem mesh_readers")
@@ -1809,7 +1809,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
-	    gmshE[1][tag].three.push_back(partid-1);
+	    gmshE[1][tag].one.push_back(partid-1);
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
@@ -1828,7 +1828,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
-	    gmshE[2][tag].three.push_back(partid-1);
+	    gmshE[2][tag].one.push_back(partid-1);
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
@@ -1847,7 +1847,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 	  input >> tag >> pdim >> ptag >> n_parts;
 	  for (int j = 0; j < n_parts; ++j) {
 	    input >> partid;
-	    gmshE[3][tag].three.push_back(partid-1);
+	    gmshE[3][tag].one.push_back(partid-1);
 	  }
 	  input >> xmin >> ymin >> zmin >>	\
 	    xmax >> ymax >> zmax >> n_tags;
@@ -2658,7 +2658,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                input >> DimEntity >> TagEntity >> type_of_element >> nb_Elements;
                const int n_elem_nodes = nodes_of_gmsh_element[type_of_element-1];
                vector<int> vert_indices(n_elem_nodes);
-               TripleIntVectMap *data = NULL;
+               PairIntVectMap *data = NULL;
 	       MFEM_VERIFY((DimEntity >= 0) && (DimEntity <= 3), "GMSH mesh file corrupted");
 	       data = &(gmshE[DimEntity]);
 
@@ -2719,8 +2719,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                   {
                      elements_1D.push_back(
                         new Segment(&vert_indices[0], phys_domain));
-		     (*data)[TagEntity].one = vert_indices;
-		     (*data)[TagEntity].one.push_back(type_of_element);
+//TOTO		     (*data)[TagEntity].one = vert_indices;
+//TOTO		     (*data)[TagEntity].one.push_back(type_of_element);
 //                   if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //		     {
 //		       std::cout << " segment noelt " << no_elt << " dim_e:" << \
@@ -2751,8 +2751,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                      {
                         elements_2D.push_back(
                            new Triangle(&vert_indices[0], phys_domain));
-			(*data)[TagEntity].one = vert_indices;
-			(*data)[TagEntity].one.push_back(type_of_element);
+//TOTO			(*data)[TagEntity].one = vert_indices;
+//TOTO			(*data)[TagEntity].one.push_back(type_of_element);
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " tria noelt " << no_elt << " dim_e:" << \
@@ -2782,8 +2782,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                      {
                         elements_2D.push_back(
                            new Quadrilateral(&vert_indices[0], phys_domain));
-			(*data)[TagEntity].one = vert_indices;
-			(*data)[TagEntity].one.push_back(type_of_element);
+//TOTO			(*data)[TagEntity].one = vert_indices;
+//TOTO			(*data)[TagEntity].one.push_back(type_of_element);
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " quad noelt " << no_elt << " dim_e:" << \
@@ -2819,8 +2819,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         elements_3D.push_back(
                            new Tetrahedron(&vert_indices[0], phys_domain));
 #endif
-			(*data)[TagEntity].one = vert_indices;
-			(*data)[TagEntity].one.push_back(type_of_element);
+//TOTO			(*data)[TagEntity].one = vert_indices;
+//TOTO			(*data)[TagEntity].one.push_back(type_of_element);
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " tet noelt " << no_elt << " dim_e:" << \
@@ -2851,8 +2851,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         el_order--;
                         elements_3D.push_back(
                            new Hexahedron(&vert_indices[0], phys_domain));
-			(*data)[TagEntity].one = vert_indices;
-			(*data)[TagEntity].one.push_back(type_of_element);
+//TOTO			(*data)[TagEntity].one = vert_indices;
+//TOTO			(*data)[TagEntity].one.push_back(type_of_element);
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " hexa noelt " << no_elt << " dim_e:" << \
@@ -2882,8 +2882,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         el_order--;
                         elements_3D.push_back(
                            new Wedge(&vert_indices[0], phys_domain));
-			(*data)[TagEntity].one = vert_indices;
-			(*data)[TagEntity].one.push_back(type_of_element);
+//TOTO			(*data)[TagEntity].one = vert_indices;
+//TOTO			(*data)[TagEntity].one.push_back(type_of_element);
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2906,8 +2906,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         el_order--;
                         elements_3D.push_back(
                            new Pyramid(&vert_indices[0], phys_domain));
-			(*data)[TagEntity].one = vert_indices;
-			(*data)[TagEntity].one.push_back(type_of_element);
+//TOTO			(*data)[TagEntity].one = vert_indices;
+//TOTO			(*data)[TagEntity].one.push_back(type_of_element);
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2921,8 +2921,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                   {
                      elements_0D.push_back(
                         new Point(&vert_indices[0], phys_domain));
-		     (*data)[TagEntity].one = vert_indices;
-		     (*data)[TagEntity].one.push_back(type_of_element);
+//TOTO		     (*data)[TagEntity].one = vert_indices;
+//TOTO		     (*data)[TagEntity].one.push_back(type_of_element);
                      break;
                   }
                   default: // any other element
