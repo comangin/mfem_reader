@@ -486,6 +486,12 @@ void GmshHOPyramidMapping(int order, int *map)
 
 #ifdef MFEM_USE_MPI
 
+typedef Triple<int,int,const std::vector<int>*> Tr_iivi;
+bool mytriple_compare (Tr_iivi a, Tr_iivi b)
+{
+  return (a.one < b.one);
+}
+  
 // ParGmshMesh implementation
 // This function loads a parallel GMSH mesh (that has been read previously through
 // Mesh::ReadGmshMesh and returns the parallel MFEM mesh corresponding to it.
@@ -528,7 +534,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    {
      IntVectMap &surfaceList = GPart[2];
      for (auto const& surf : surfaceList) {
-       const int tag=surf.first;
+       const int tag = surf.first;
        const std::vector<int> &shared_procs = (surf.second);       
        bool contains = std::binary_search(shared_procs.begin(),
 					  shared_procs.end(), MyRank);
@@ -546,8 +552,8 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    }
    
    // Determine shared vertices
-   // TODO: should we sort sverts ?
-   std::vector<int> svert_group, sverts;
+   std::vector<Tr_iivi> sverts;
+
    for (auto const& vit : vinfo)
      {
        const int gmsh_vindex = vit.first;
@@ -561,15 +567,36 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        MFEM_VERIFY(it != myDimMap.end(), "Error reading GMSH file");
        // If more than one proc sharing this vertex, do stuff
        const std::vector<int> &shared_procs = (it->second);
-       int shared_psize = shared_procs.size();
+       const int shared_psize = shared_procs.size();
        if (shared_psize > 1) {
-	 eleRanks.SetSize(shared_psize);
-	 for (int i=0; i<shared_psize; i++) eleRanks[i]=shared_procs[i];
-	 group.Recreate(shared_psize, eleRanks);
-	 sverts.push_back(ver);
-	 svert_group.push_back(groups.Insert(group) - 1);
+	 sverts.push_back(Tr_iivi(gmsh_vindex,ver,&(it->second)));
+	 if (MyRank == 3) std::cout << "list_sh_v1 gmsh_idx " << gmsh_vindex << " ver " << ver << " " << shared_psize << std::endl;
        }
      }
+   // Sort sverts based on value of GMSH vertex numbering 
+   std::sort (sverts.begin(), sverts.end(), mytriple_compare);
+
+   // Fill svert_group and svert_list
+   Array<int> svert_group(sverts.size());
+   Array<int> svert_list(sverts.size());
+   int j = 0;
+   for (auto const &tripl : sverts)
+     {
+       const int ver = tripl.two;
+       const std::vector<int> *shared_procs = tripl.three;
+       const int shared_psize = shared_procs->size();
+       
+       eleRanks.SetSize(shared_psize);
+       for (int i=0; i<shared_psize; i++) eleRanks[i]=(*shared_procs)[i];
+       group.Recreate(shared_psize, eleRanks);
+       svert_list[j] = ver;
+       svert_group[j] = (groups.Insert(group) - 1);
+       j++;
+       if (MyRank == 3) std::cout << "list_sh_v2 " << ver << " " << shared_psize << std::endl;
+     }
+   // Erase all data within svert
+   sverts.resize(0);
+   
    group_stria.MakeI(groups.Size()-1);
    group_squad.MakeI(groups.Size()-1);
    group_stria.MakeJ();
@@ -583,12 +610,12 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 
    // Build group_svert
    group_svert.MakeI(groups.Size()-1);
-   for (int i = 0; i < svert_group.size(); i++)
+   for (int i = 0; i < svert_group.Size(); i++)
    {
       group_svert.AddAColumnInRow(svert_group[i]);
    }
    group_svert.MakeJ();
-   for (int i = 0; i < svert_group.size(); i++)
+   for (int i = 0; i < svert_group.Size(); i++)
    {
       group_svert.AddConnection(svert_group[i], i);
    }
@@ -597,10 +624,10 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    shared_edges.SetSize(0);  
    sedge_ledge. SetSize(0);
 
-   svert_lvert.SetSize(sverts.size());
-   for (int i = 0; i < sverts.size(); i++)
+   svert_lvert.SetSize(svert_list.Size());
+   for (int i = 0; i < svert_list.Size(); i++)
    {
-      svert_lvert[i] = sverts[i];
+      svert_lvert[i] = svert_list[i];
    }
 
    MPI_Barrier(MyComm);
