@@ -526,28 +526,36 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
                "[proc " << MyRank << "]: invalid state");
    PairIntVectMap *gmshE = gmesh->gmshE;
    VerMap &vinfo = gmesh->vertices_info;
+   EltMap &einfo = gmesh->elts_info;
    Array<int> eleRanks;
 
    // Determine shared faces
    std::vector<int> sface_group, sfaces;
    if (Dim > 2)
    {
-     PairIntVectMap &sList = gmshE[2];
-     for (auto const& surf : sList) {
-       const int tag = surf.first;
-       const std::vector<int> &shared_procs = (surf.second.one);       
-       bool contains = std::binary_search(shared_procs.begin(),
-					  shared_procs.end(), MyRank);
-       int shared_psize = shared_procs.size();
-       std::cerr << "enum sface " << tag << " sizes " << surf.second.one.size() \
-		 << " " << surf.second.two.size()  << std::endl;
-       if (contains && shared_psize > 1) {
-	 eleRanks.SetSize(shared_psize);
-	 for (int i=0; i<shared_psize; i++) eleRanks[i]=shared_procs[i];
-	 group.Recreate(shared_psize, eleRanks);
-	 sfaces.push_back(tag); //TODO: change tag here for a local id
-	 std::cerr << "shared sface " << tag << std::endl;
-	 sface_group.push_back(groups.Insert(group) - 1);
+     for (auto const& elt : einfo) {
+       const int no_elt = elt.first;
+       const uint64_t DimEntity = elt.second.one[0];
+       const uint64_t TagEntity = elt.second.one[1];
+       const uint64_t elt_type  = elt.second.one[2];
+       if (DimEntity == 2) {
+	 const std::vector<int> &vlist = elt.second.two;
+	 const auto &myPair = gmshE[DimEntity][TagEntity];
+	 const std::vector<int> &procs = myPair.one;       
+	 const std::vector<int> &phys  = myPair.two;       
+	 MFEM_VERIFY (procs.size() > 0 || phys.size() > 0, "GMSH reader internal error");
+	 bool contains = std::binary_search(procs.begin(),
+					    procs.end(), MyRank);
+	 int shared_psize = procs.size();
+	 std::cerr << "sface " << no_elt << " elt_type " << elt_type << " tage " << \
+	   TagEntity << " psize " << shared_psize << " contains " << contains << std::endl;
+	 if (contains && shared_psize > 1) {
+	   eleRanks.SetSize(shared_psize);
+	   for (int i=0; i<shared_psize; i++) eleRanks[i]=procs[i];
+	   group.Recreate(shared_psize, eleRanks);
+	   sfaces.push_back(no_elt); //TODO: change tag here for a local id
+	   sface_group.push_back(groups.Insert(group) - 1);
+	 }
        }
      }
        
