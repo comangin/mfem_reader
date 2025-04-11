@@ -1519,13 +1519,14 @@ void Mesh::ReadInlineMesh(std::istream &input, bool generate_edges)
    }
 }
 
-void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
+void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool finalize_topo)
 {
    string buff;
    real_t version;
    int iversion;
    int binary, dsize;
    bool parallel = false;
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    input >> version >> binary >> dsize;
    iversion = static_cast<int>(round(10*version));
    if (iversion != 41 && iversion != 22)
@@ -1554,6 +1555,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
    gmesh->parallel = true;
 #endif
 
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    getline(input, buff);
    // There is a number 1 in binary format
    if (binary)
@@ -3030,7 +3032,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
 
             // Generate faces and edges so that we can define
             // FE space on the mesh
-            this->FinalizeTopology();
+	    if (finalize_topo)
+	      this->FinalizeTopology();
 
             // Construct GridFunction for uniformly spaced high order coords
             FiniteElementCollection* nfec;
@@ -3304,16 +3307,15 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
             }
          }
 
-	 cerr << "MeshReader LINE "<< __LINE__ << endl;
          // Convert nodes to discontinuous GridFunction (if they aren't already)
          if (mesh_order == 1)
          {
-            this->FinalizeTopology();
+	    if (finalize_topo)
+	     this->FinalizeTopology();
             this->SetMeshGen();
             this->SetCurvature(1, true, spaceDim, Ordering::byVDIM);
          }
 
-	 cerr << "MeshReader LINE "<< __LINE__ << endl;
          // Replace "slave" vertex indices in the element connectivity
          // with their corresponding "master" vertex indices.
          for (int i = 0; i < this->GetNE(); i++)
@@ -3341,6 +3343,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
       }
    } // we reach the end of the file
 
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
+   
    // Process set names
    if (phys_names_by_dim.size() > 0)
    {
@@ -3365,13 +3369,18 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
       }
    }
 
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    this->RemoveUnusedVertices();
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    if (periodic)
    {
       this->RemoveInternalBoundaries();
    }
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
 
-   this->FinalizeTopology();
+   if (finalize_topo)
+     this->FinalizeTopology();
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
 
    // If a high order coordinate field was created project it onto the mesh
    if (mesh_order > 1)
@@ -3381,6 +3390,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
       VectorGridFunctionCoefficient NodesCoef(&Nodes_gf);
       Nodes->ProjectCoefficient(NodesCoef);
    }
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
+
 }
 
 

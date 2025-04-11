@@ -499,6 +499,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
                          int refine, int generate_edges, bool fix_orientation)
 {
    // Set the communicator for gtopo
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    gtopo.SetComm(comm);
 
    MyComm = comm;
@@ -510,9 +511,10 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    std::string mesh_type;
    //TODO : curved and high-order
    int curved = 0, read_gf=1;
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    ifs >> std::ws;
    getline(ifs, mesh_type);
-   Mesh::ReadGmshMesh(ifs, curved, read_gf);
+   Mesh::ReadGmshMesh(ifs, curved, read_gf, true);
 
    
    ListOfIntegerSets  groups;
@@ -524,6 +526,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 
    MFEM_ASSERT(Dim >= 3 || Dim < 1 || GetNFaces() == 0,
                "[proc " << MyRank << "]: invalid state");
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    PairIntVectMap *gmshE = gmesh->gmshE;
    VerMap &vinfo = gmesh->vertices_info;
    EltMap &einfo = gmesh->elts_info;
@@ -580,7 +583,8 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        const int shared_psize = shared_procs.size();
        if (shared_psize > 1) {
 	 sverts.push_back(Tr_iivi(gmsh_vindex,ver,&(it->second.one)));
-	 if (MyRank == 3) std::cout << "list_sh_v1 gmsh_idx " << gmsh_vindex << " ver " << ver << " " << shared_psize << std::endl;
+	 if (MyRank == 3) std::cout << "list_sh_v1 gmsh_idx " << \
+			    gmsh_vindex << " ver " << ver << " " << shared_psize << std::endl;
        }
      }
    // Sort sverts based on value of GMSH vertex numbering 
@@ -640,10 +644,12 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
       svert_lvert[i] = svert_list[i];
    }
 
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    MPI_Barrier(MyComm);
    // Build the group communication topology
    gtopo.Create(groups, 822);
 
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    // Determine sedge_ledge and sface_lface
    FinalizeParTopo();
 
@@ -653,6 +659,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
      //???
    }
    Finalize(refine, fix_orientation);
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
 }
 
 #endif  // MFEM_USE_MPI

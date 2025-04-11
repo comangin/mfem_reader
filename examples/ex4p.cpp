@@ -122,9 +122,11 @@ int main(int argc, char *argv[])
    ParMesh *pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
    delete mesh;
 #else
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
    ifstream ifs(fname);
    MFEM_VERIFY(ifs.good(), "Mesh file " << fname << " not found.");
+   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    ParMesh *pmesh = new ParGmshMesh(MPI_COMM_WORLD, fname);
 #endif
    
