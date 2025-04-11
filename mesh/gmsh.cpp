@@ -524,7 +524,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 
    MFEM_ASSERT(Dim >= 3 || Dim < 1 || GetNFaces() == 0,
                "[proc " << MyRank << "]: invalid state");
-   IntVectMap *GPart = gmesh->GPart;
+   TripleIntVectMap *gmshE = gmesh->gmshE;
    FourUIntMap &vinfo = gmesh->vertices_info;
    Array<int> eleRanks;
 
@@ -532,10 +532,10 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    std::vector<int> sface_group, sfaces;
    if (Dim > 2)
    {
-     IntVectMap &surfaceList = GPart[2];
+     TripleIntVectMap &surfaceList = gmshE[2];
      for (auto const& surf : surfaceList) {
        const int tag = surf.first;
-       const std::vector<int> &shared_procs = (surf.second);       
+       const std::vector<int> &shared_procs = (surf.second.three);       
        bool contains = std::binary_search(shared_procs.begin(),
 					  shared_procs.end(), MyRank);
        int shared_psize = shared_procs.size();
@@ -562,14 +562,14 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        const int DimEntity = myv[1];
        const int TagEntity = myv[2];
        const int data = myv[3];
-       IntVectMap &myDimMap = GPart[DimEntity];
-       IntVectMap::const_iterator it = myDimMap.find(TagEntity);
+       TripleIntVectMap &myDimMap = gmshE[DimEntity];
+       TripleIntVectMap::const_iterator it = myDimMap.find(TagEntity);
        MFEM_VERIFY(it != myDimMap.end(), "Error reading GMSH file");
        // If more than one proc sharing this vertex, do stuff
-       const std::vector<int> &shared_procs = (it->second);
+       const std::vector<int> &shared_procs = (it->second.three);
        const int shared_psize = shared_procs.size();
        if (shared_psize > 1) {
-	 sverts.push_back(Tr_iivi(gmsh_vindex,ver,&(it->second)));
+	 sverts.push_back(Tr_iivi(gmsh_vindex,ver,&(it->second.three)));
 	 if (MyRank == 3) std::cout << "list_sh_v1 gmsh_idx " << gmsh_vindex << " ver " << ver << " " << shared_psize << std::endl;
        }
      }

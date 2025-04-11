@@ -2700,7 +2700,7 @@ public:
 
 
 /** @brief Structure for storing information read from GMSH files concerning the mesh. */
-typedef std::map<int, std::vector<int>> IntVectMap;
+typedef std::map<int, Triple<std::vector<int>,std::vector<int>,std::vector<int>>> TripleIntVectMap;
 typedef std::map<int, std::array<uint64_t,4>> FourUIntMap;
 class GMSHData
 {
@@ -2708,8 +2708,7 @@ private:
 public:
   // Specific to GMSH 4.1 format (begin)
    bool parallel = false;
-   IntVectMap GPhys[4];
-   IntVectMap GPart[4];
+   TripleIntVectMap gmshE[4];
    FourUIntMap vertices_info;
    // Specific to GMSH 4.1 format (end)
 
