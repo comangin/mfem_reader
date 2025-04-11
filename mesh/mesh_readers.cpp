@@ -2261,7 +2261,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                      {
                         elements_1D.push_back(
                            new Segment(&vert_indices[0], phys_domain));
-                        if (type_of_element != 1)
+			  if (type_of_element != 1)
                         {
                            el_order = n_elem_nodes - 1;
                            Array<int> * hov = new Array<int>;
@@ -2719,7 +2719,9 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                   {
                      elements_1D.push_back(
                         new Segment(&vert_indices[0], phys_domain));
-//		     if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
+		     (*data)[TagEntity].one = vert_indices;
+		     (*data)[TagEntity].one.push_back(type_of_element);
+//                   if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //		     {
 //		       std::cout << " segment noelt " << no_elt << " dim_e:" << \
 //			 DimEntity << " tag_e:" << TagEntity << " " << \
@@ -2749,6 +2751,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                      {
                         elements_2D.push_back(
                            new Triangle(&vert_indices[0], phys_domain));
+			(*data)[TagEntity].one = vert_indices;
+			(*data)[TagEntity].one.push_back(type_of_element);
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " tria noelt " << no_elt << " dim_e:" << \
@@ -2778,6 +2782,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                      {
                         elements_2D.push_back(
                            new Quadrilateral(&vert_indices[0], phys_domain));
+			(*data)[TagEntity].one = vert_indices;
+			(*data)[TagEntity].one.push_back(type_of_element);
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " quad noelt " << no_elt << " dim_e:" << \
@@ -2813,6 +2819,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         elements_3D.push_back(
                            new Tetrahedron(&vert_indices[0], phys_domain));
 #endif
+			(*data)[TagEntity].one = vert_indices;
+			(*data)[TagEntity].one.push_back(type_of_element);
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " tet noelt " << no_elt << " dim_e:" << \
@@ -2843,6 +2851,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         el_order--;
                         elements_3D.push_back(
                            new Hexahedron(&vert_indices[0], phys_domain));
+			(*data)[TagEntity].one = vert_indices;
+			(*data)[TagEntity].one.push_back(type_of_element);
 //			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
 //			  {
 //			    std::cout << " hexa noelt " << no_elt << " dim_e:" << \
@@ -2872,6 +2882,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         el_order--;
                         elements_3D.push_back(
                            new Wedge(&vert_indices[0], phys_domain));
+			(*data)[TagEntity].one = vert_indices;
+			(*data)[TagEntity].one.push_back(type_of_element);
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2894,6 +2906,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                         el_order--;
                         elements_3D.push_back(
                            new Pyramid(&vert_indices[0], phys_domain));
+			(*data)[TagEntity].one = vert_indices;
+			(*data)[TagEntity].one.push_back(type_of_element);
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2907,6 +2921,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf)
                   {
                      elements_0D.push_back(
                         new Point(&vert_indices[0], phys_domain));
+		     (*data)[TagEntity].one = vert_indices;
+		     (*data)[TagEntity].one.push_back(type_of_element);
                      break;
                   }
                   default: // any other element
