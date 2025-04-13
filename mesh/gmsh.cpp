@@ -550,9 +550,9 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 	 bool contains = std::binary_search(procs.begin(),
 					    procs.end(), MyRank);
 	 int shared_psize = procs.size();
-	 std::cerr << "sface " << no_elt << " elt_type " << elt_type << " tage " << \
-	   TagEntity << " psize " << shared_psize << " contains " << contains << std::endl;
 	 if (contains && shared_psize > 1) {
+	   std::cerr << "shared_face " << no_elt << " elt_type " << elt_type << " tage " << \
+	     TagEntity << " psize " << shared_psize << " contains " << contains << std::endl;
 	   eleRanks.SetSize(shared_psize);
 	   for (int i=0; i<shared_psize; i++) eleRanks[i]=procs[i];
 	   group.Recreate(shared_psize, eleRanks);
@@ -583,8 +583,8 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        const int shared_psize = shared_procs.size();
        if (shared_psize > 1) {
 	 sverts.push_back(Tr_iivi(gmsh_vindex,ver,&(it->second.one)));
-	 if (MyRank == 3) std::cout << "list_sh_v1 gmsh_idx " << \
-			    gmsh_vindex << " ver " << ver << " " << shared_psize << std::endl;
+//TOREMOVE	 if (MyRank == 3) std::cout << "list_sh_v1 gmsh_idx " << \
+//TOREMOVE			    gmsh_vindex << " ver " << ver << " " << shared_psize << std::endl;
        }
      }
    // Sort sverts based on value of GMSH vertex numbering 
@@ -593,6 +593,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    // Fill svert_group and svert_list
    Array<int> svert_group(sverts.size());
    Array<int> svert_list(sverts.size());
+
    int j = 0;
    for (auto const &tripl : sverts)
      {
@@ -606,7 +607,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        svert_list[j] = ver;
        svert_group[j] = (groups.Insert(group) - 1);
        j++;
-       if (MyRank == 3) std::cout << "list_sh_v2 " << ver << " " << shared_psize << std::endl;
+       //TOREMOVE       if (MyRank == 3) std::cout << "list_sh_v2 " << ver << " " << shared_psize << std::endl;
      }
    // Erase all data within svert
    sverts.resize(0);

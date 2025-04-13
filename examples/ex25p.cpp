@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
    int order = 1;
    int ref_levels = 1;
    int par_ref_levels = 2;
-   int iprob = 4;
+   int iprob = 0;
    real_t freq = 5.0;
    bool herm_conv = true;
    bool slu_solver  = false;
@@ -238,6 +238,7 @@ int main(int argc, char *argv[])
    // 4. Setup the (serial) mesh on all processors.
    if (!mesh_file)
    {
+     cout << "If!mesh" << myid << endl;
       exact_known = true;
       switch (prob)
       {
@@ -259,6 +260,7 @@ int main(int argc, char *argv[])
             break;
       }
    }
+   cout << "Deb Exact known " << myid << " " << exact_known << endl;
 
    if (!args.Good())
    {
@@ -625,91 +627,91 @@ int main(int argc, char *argv[])
               << sqrt(L2Error_Re*L2Error_Re + L2Error_Im*L2Error_Im) << "\n\n";
       }
    }
-
-   // 18. Save the refined mesh and the solution in parallel. This output can be
-   //     viewed later using GLVis: "glvis -np <np> -m mesh -g sol".
-   {
-      ostringstream mesh_name, sol_r_name, sol_i_name;
-      mesh_name << "mesh." << setfill('0') << setw(6) << myid;
-      sol_r_name << "ex25p-sol_r." << setfill('0') << setw(6) << myid;
-      sol_i_name << "ex25p-sol_i." << setfill('0') << setw(6) << myid;
-
-      ofstream mesh_ofs(mesh_name.str().c_str());
-      mesh_ofs.precision(8);
-      pmesh->Print(mesh_ofs);
-
-      ofstream sol_r_ofs(sol_r_name.str().c_str());
-      ofstream sol_i_ofs(sol_i_name.str().c_str());
-      sol_r_ofs.precision(8);
-      sol_i_ofs.precision(8);
-      x.real().Save(sol_r_ofs);
-      x.imag().Save(sol_i_ofs);
-   }
-
-   // 19. Send the solution by socket to a GLVis server.
-   if (visualization)
-   {
-      // Define visualization keys for GLVis (see GLVis documentation)
-      string keys;
-      keys = (dim == 3) ? "keys macF\n" : keys = "keys amrRljcUUuu\n";
-      if (prob == beam && dim == 3) {keys = "keys macFFiYYYYYYYYYYYYYYYYYY\n";}
-      if (prob == beam && dim == 2) {keys = "keys amrRljcUUuuu\n"; }
-
-      char vishost[] = "localhost";
-      int visport = 19916;
-
-      {
-         socketstream sol_sock_re(vishost, visport);
-         sol_sock_re.precision(8);
-         sol_sock_re << "parallel " << num_procs << " " << myid << "\n"
-                     << "solution\n" << *pmesh << x.real() << keys
-                     << "window_title 'Solution real part'" << flush;
-         MPI_Barrier(MPI_COMM_WORLD); // try to prevent streams from mixing
-      }
-
-      {
-         socketstream sol_sock_im(vishost, visport);
-         sol_sock_im.precision(8);
-         sol_sock_im << "parallel " << num_procs << " " << myid << "\n"
-                     << "solution\n" << *pmesh << x.imag() << keys
-                     << "window_title 'Solution imag part'" << flush;
-         MPI_Barrier(MPI_COMM_WORLD); // try to prevent streams from mixing
-      }
-
-      {
-         ParGridFunction x_t(fespace);
-         x_t = x.real();
-
-         socketstream sol_sock(vishost, visport);
-         sol_sock.precision(8);
-         sol_sock << "parallel " << num_procs << " " << myid << "\n"
-                  << "solution\n" << *pmesh << x_t << keys << "autoscale off\n"
-                  << "window_title 'Harmonic Solution (t = 0.0 T)'"
-                  << "pause\n" << flush;
-
-         if (myid == 0)
-         {
-            cout << "GLVis visualization paused."
-                 << " Press space (in the GLVis window) to resume it.\n";
-         }
-
-         int num_frames = 32;
-         int i = 0;
-         while (sol_sock)
-         {
-            real_t t = (real_t)(i % num_frames) / num_frames;
-            ostringstream oss;
-            oss << "Harmonic Solution (t = " << t << " T)";
-
-            add(cos(real_t(2.0*M_PI)*t), x.real(),
-                sin(real_t(2.0*M_PI)*t), x.imag(), x_t);
-            sol_sock << "parallel " << num_procs << " " << myid << "\n";
-            sol_sock << "solution\n" << *pmesh << x_t
-                     << "window_title '" << oss.str() << "'" << flush;
-            i++;
-         }
-      }
-   }
+   MPI_Barrier(MPI_COMM_WORLD); // try to prevent streams from mixing
+//   // 18. Save the refined mesh and the solution in parallel. This output can be
+//   //     viewed later using GLVis: "glvis -np <np> -m mesh -g sol".
+//   {
+//      ostringstream mesh_name, sol_r_name, sol_i_name;
+//      mesh_name << "mesh." << setfill('0') << setw(6) << myid;
+//      sol_r_name << "ex25p-sol_r." << setfill('0') << setw(6) << myid;
+//      sol_i_name << "ex25p-sol_i." << setfill('0') << setw(6) << myid;
+//
+//      ofstream mesh_ofs(mesh_name.str().c_str());
+//      mesh_ofs.precision(8);
+//      pmesh->Print(mesh_ofs);
+//
+//      ofstream sol_r_ofs(sol_r_name.str().c_str());
+//      ofstream sol_i_ofs(sol_i_name.str().c_str());
+//      sol_r_ofs.precision(8);
+//      sol_i_ofs.precision(8);
+//      x.real().Save(sol_r_ofs);
+//      x.imag().Save(sol_i_ofs);
+//   }
+//
+//   // 19. Send the solution by socket to a GLVis server.
+//   if (visualization)
+//   {
+//      // Define visualization keys for GLVis (see GLVis documentation)
+//      string keys;
+//      keys = (dim == 3) ? "keys macF\n" : keys = "keys amrRljcUUuu\n";
+//      if (prob == beam && dim == 3) {keys = "keys macFFiYYYYYYYYYYYYYYYYYY\n";}
+//      if (prob == beam && dim == 2) {keys = "keys amrRljcUUuuu\n"; }
+//
+//      char vishost[] = "localhost";
+//      int visport = 19916;
+//
+//      {
+//         socketstream sol_sock_re(vishost, visport);
+//         sol_sock_re.precision(8);
+//         sol_sock_re << "parallel " << num_procs << " " << myid << "\n"
+//                     << "solution\n" << *pmesh << x.real() << keys
+//                     << "window_title 'Solution real part'" << flush;
+//         MPI_Barrier(MPI_COMM_WORLD); // try to prevent streams from mixing
+//      }
+//
+//      {
+//         socketstream sol_sock_im(vishost, visport);
+//         sol_sock_im.precision(8);
+//         sol_sock_im << "parallel " << num_procs << " " << myid << "\n"
+//                     << "solution\n" << *pmesh << x.imag() << keys
+//                     << "window_title 'Solution imag part'" << flush;
+//         MPI_Barrier(MPI_COMM_WORLD); // try to prevent streams from mixing
+//      }
+//
+//      {
+//         ParGridFunction x_t(fespace);
+//         x_t = x.real();
+//
+//         socketstream sol_sock(vishost, visport);
+//         sol_sock.precision(8);
+//         sol_sock << "parallel " << num_procs << " " << myid << "\n"
+//                  << "solution\n" << *pmesh << x_t << keys << "autoscale off\n"
+//                  << "window_title 'Harmonic Solution (t = 0.0 T)'"
+//                  << "pause\n" << flush;
+//
+//         if (myid == 0)
+//         {
+//            cout << "GLVis visualization paused."
+//                 << " Press space (in the GLVis window) to resume it.\n";
+//         }
+//
+//         int num_frames = 32;
+//         int i = 0;
+//         while (sol_sock)
+//         {
+//            real_t t = (real_t)(i % num_frames) / num_frames;
+//            ostringstream oss;
+//            oss << "Harmonic Solution (t = " << t << " T)";
+//
+//            add(cos(real_t(2.0*M_PI)*t), x.real(),
+//                sin(real_t(2.0*M_PI)*t), x.imag(), x_t);
+//            sol_sock << "parallel " << num_procs << " " << myid << "\n";
+//            sol_sock << "solution\n" << *pmesh << x_t
+//                     << "window_title '" << oss.str() << "'" << flush;
+//            i++;
+//         }
+//      }
+//   }
 
    // 20. Free the used memory.
    delete pml;

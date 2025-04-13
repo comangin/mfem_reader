@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
    int ser_ref_levels = 2;
    int par_ref_levels = 1;
    bool static_cond = false;
-   bool visualization = true;
+   bool visualization = false;
 
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_type, "-mt", "--mesh-type",

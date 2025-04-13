@@ -2697,8 +2697,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                    // have physical domain zero, we will throw an error.
                    if (phys_domain <= 0)
                    { 
-                      has_nonpositive_phys_domain = true;
-                      phys_domain = 1;
+		     //                      has_nonpositive_phys_domain = true; //TOREMOVE
+		     phys_domain = 99999; //TOREMOVE
                    }
                    else
                    {
