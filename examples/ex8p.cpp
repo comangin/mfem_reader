@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
       args.PrintOptions(cout);
    }
 
-#if 1 // !GMSH
+#if 0 // !GMSH
    Mesh *mesh = new Mesh(mesh_file, 1, 1);
    int dim = mesh->Dimension();
    ParMesh *pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);

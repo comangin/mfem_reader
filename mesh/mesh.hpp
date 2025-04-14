@@ -2704,18 +2704,35 @@ typedef std::map<int, Pair<std::vector<int>,std::vector<int>>> PairIntVectMap;
 typedef std::map<int, std::array<uint64_t,4>> VerMap;
 typedef std::vector<std::array<uint64_t,4>> VerVec;
 typedef std::map<int, Pair<std::array<uint64_t,3>,std::vector<int>>> EltMap;
+
+// Data structure specific to GMSH 4.1 format 
 class GMSHData
 {
 private:
 public:
-  // Specific to GMSH 4.1 format (begin)
+  // Detect whether MPI is used
+#ifndef MFEM_USE_MPI
+   bool parallel = true;
+#else
    bool parallel = false;
+#endif
+  // Each component 0->3 corresponds to a dimension (DimEntity).
+  // Then each key of the map is a TagEntity.
+  // Data stored for each entry (DimEntity, TagEntity) is a
+  // Pair of vectors. First vector (.one field) keeps track of processes that
+  // have a copy of mesh data of this entity. Second vector (.second field)
+  // contains Physical tags.
    PairIntVectMap gmshE[4];
+  // For each vertex index (key of the map), stores 4 info :
+  // local MFEM vertex number, DimenEntity, TagEntity, sharing by multiple procs
    VerMap gmsh_vert_info;
+  // For each vertex MFEM index (sequence from 0 to NumberOfVertices-1), stores 4 info :
+  // original GMSH vertex number, DimenEntity, TagEntity, sharing by multiple procs
    VerVec mfem_vert_info;
+  // For each element read by GMSH, keep info within a pair<3 integers, vector of vertices>
+  // First part of the pair : DimEntity, TagEntity, GMSH type of element 
+  // Second part of the pair : List of MFEM local vertex indices
    EltMap elts_info;
-   // Specific to GMSH 4.1 format (end)
-
 };
 
 /** @brief Class that allows serial meshes to be partitioned into MeshPart
