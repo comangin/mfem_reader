@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
    // 2. Parse command-line options.
    const char *mesh_file = "../data/star.mesh";
    int ser_ref_levels = -1;
-   int par_ref_levels = 2;
+   int par_ref_levels = 0;
    int order = 1;
    real_t sigma = -1.0;
    real_t kappa = -1.0;
@@ -136,36 +136,25 @@ int main(int argc, char *argv[])
    Device device(device_config);
    if (Mpi::Root()) { device.Print(); }
 
-   // 3. Read the (serial) mesh from the given mesh file on all processors. We
-   //    can handle triangular, quadrilateral, tetrahedral and hexahedral meshes
-   //    with the same code. NURBS meshes are projected to second order meshes.
+#if 0 // !GMSH
    Mesh mesh(mesh_file);
    int dim = mesh.Dimension();
-
-   // 4. Refine the serial mesh on all processors to increase the resolution. In
-   //    this example we do 'ser_ref_levels' of uniform refinement. By default,
-   //    or if ser_ref_levels < 0, we choose it to be the largest number that
-   //    gives a final mesh with no more than 50,000 elements.
-   {
-      if (ser_ref_levels < 0)
-      {
-         ser_ref_levels = (int)floor(log(10000./mesh.GetNE())/log(2.)/dim);
-      }
-      for (int l = 0; l < ser_ref_levels; l++)
-      {
-         mesh.UniformRefinement();
-      }
-   }
    if (mesh.NURBSext)
    {
       mesh.SetCurvature(max(order, 1));
    }
-
-   // 5. Define a parallel mesh by a partitioning of the serial mesh. Refine
-   //    this mesh further in parallel to increase the resolution. Once the
-   //    parallel mesh is defined, the serial mesh can be deleted.
    ParMesh pmesh(MPI_COMM_WORLD, mesh);
    mesh.Clear();
+#else
+   int myid = Mpi::WorldRank();
+   string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
+   ifstream ifs(fname);
+   MFEM_VERIFY(ifs.good(), "Mesh file " << fname << " not found.");
+   ParGmshMesh pmesh(MPI_COMM_WORLD, fname);
+   int dim = pmesh.Dimension();
+#endif
+   
+
    {
       for (int l = 0; l < par_ref_levels; l++)
       {

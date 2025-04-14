@@ -74,30 +74,20 @@ int main(int argc, char *argv[])
       args.PrintOptions(cout);
    }
 
-   // 3. Read the (serial) mesh from the given mesh file on all processors.  We
-   //    can handle triangular, quadrilateral, tetrahedral, hexahedral, surface
-   //    and volume meshes with the same code.
+#if 1 // !GMSH
    Mesh *mesh = new Mesh(mesh_file, 1, 1);
    int dim = mesh->Dimension();
-
-   // 4. Refine the serial mesh on all processors to increase the resolution. In
-   //    this example we do 'ref_levels' of uniform refinement. We choose
-   //    'ref_levels' to be the largest number that gives a final mesh with no
-   //    more than 10,000 elements.
-   {
-      int ref_levels =
-         (int)floor(log(10000./mesh->GetNE())/log(2.)/dim);
-      for (int l = 0; l < ref_levels; l++)
-      {
-         mesh->UniformRefinement();
-      }
-   }
-
-   // 5. Define a parallel mesh by a partitioning of the serial mesh. Refine
-   //    this mesh further in parallel to increase the resolution. Once the
-   //    parallel mesh is defined, the serial mesh can be deleted.
    ParMesh *pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
    delete mesh;
+#else
+   string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
+   ifstream ifs(fname);
+   MFEM_VERIFY(ifs.good(), "Mesh file " << fname << " not found.");
+   ParMesh *pmesh = new ParGmshMesh(MPI_COMM_WORLD, fname);
+   int dim = pmesh->Dimension();
+#endif
+
+
    {
       int par_ref_levels = 1;
       for (int l = 0; l < par_ref_levels; l++)
