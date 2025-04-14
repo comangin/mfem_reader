@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
                   "Mesh file to use.");
-   args.AddOption(&gmsh_part, "-gm", "--gmsh", "-no-gm", "--no-gmsh",
+   args.AddOption(&gmsh_part, "-gp", "--gmsh-part", "-no-gp", "--no-gmsh-part",
                   "Gmsh partitioned mesh file");
    args.AddOption(&order, "-o", "--order",
                   "Finite element order (polynomial degree).");
