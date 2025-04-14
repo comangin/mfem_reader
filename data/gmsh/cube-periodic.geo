@@ -21,8 +21,6 @@ DefineConstant[
   periodic = {0, Choices{0="NotPeriodic", 1="Periodic"},
     Name "Parameters/5Mesh periodicity"}
 ];
-partitioner = 1;
-periodic = 0;
 ep = 1.;
 mp = 0.5*ep;
 cl = mp/2.1;
@@ -109,7 +107,7 @@ Volume (1) = {1};
 Surface Loop (2) = {2, 3, 6, 7, 8, 9};
 Volume (2) = {2};
 
-// Physical Volume("main", 1)  = {1, 2};
+Physical Volume("main", 1)  = {1, 2};
 
 //For vo In {1:2}
 //    Physical Volume(vo)  = {vo}; 
