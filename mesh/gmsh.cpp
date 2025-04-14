@@ -636,12 +636,13 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        svert_list[j] = ver;
        svert_group[j] = (groups.Insert(group) - 1);
        j++;
-
      }
+   
    // Erase all data within svert
    sverts.resize(0);
 
    // Fill svert_lvert the list of shared vertex (mfem numbering)
+   // TODO : remove svert_list -> svert_lvert can be directly filled
    svert_lvert.SetSize(svert_list.Size());
    for (int i = 0; i < svert_list.Size(); i++)
    {
@@ -680,6 +681,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 
    gtopo.Create(groups, 822);
 
+   //TODO : verify/check
    FinalizeParTopo();
 
       // Set nodes for higher order mesh

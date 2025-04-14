@@ -1,5 +1,6 @@
 DONE reader GMSH// :
-  [x] (directiry data); gmsh -3 -setnumber partitioner 1 -save_all cube-periodic.geo
+  [x] (directory data); gmsh -3 -setnumber partitioner 1 -save_all cube-periodic.geo
+      TODO regarder physicals=1
   [x] GMSH 4.1 ASCII reader (mesh_reader.cpp)
   [x] Build ParGmshMesh constructor (inheriting from ParMesh) 
   [x] Check with simple examples ex1p.cpp ex3p.cpp and ex4p.cpp, ex8p.cpp
@@ -9,15 +10,21 @@ DONE reader GMSH// :
 Questions :
   - svert_group and svert_list do not seem to be required,
     identify functionnalities that depends on that
-  
+  - When is it strictly needed t build the shared lists within MFEM ?
+     -> FaceIntegrator ...  Can leed to simplification for the end user (glag for gmsh partitioning)
+
 TODO reader GMSH// :
-  [] Finish group_stria and group_squad and group_sedge 
+  [] Finish group_stria and group_squad and group_sedge (draft before checks are consolidated)
+  [] Check if  "physical" option of GMSH build shared faces/vertices without -save_all
   [] Extensive checks  - few things depends on group_stria/group_squad
       (grep -i FaceIntegrator examples/*p.cpp -> ex8p.cpp to begin with)   
-  [] Look at support for high order elements
+  [] Look at support for high order elements (find regression checks)
   [] Clean examples that use ParGmshMesh (directory examples/gmsh) :
-      ex3p.cpp, ex1p.cpp, ex4p.cpp, ex8p.cpp and build others  (regression tests)
-  [] Reconstruct shared faces/vertices without -save_all
+      ex3p.cpp, ex1p.cpp, ex4p.cpp, ex8p.cpp and build others (regression tests)
+      add example meshes with gmsh command
+  [] Check periodicity and add a new example ex9p.cpp (with FaceIntegrator)
   [] Pb in mesh_readers.cpp during split/partition by GMSH, loosing phys_domain tag
       -> L2689: phys_domain = 99999 // TO BE REMOVED
   [] Write a README with recommandation for using gmsh parallel reader
+  [] Check a GMSH mesh against MFEM parallel mesh (Corentin ?) and compare shared information
+     Several scenarii are possible

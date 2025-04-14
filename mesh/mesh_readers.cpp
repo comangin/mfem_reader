@@ -2985,6 +2985,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
 
             // Generate faces and edges so that we can define
             // FE space on the mesh
+	    //TODO : verify/check
 	    if (finalize_topo)
 	      this->FinalizeTopology();
 
@@ -3263,6 +3264,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
          // Convert nodes to discontinuous GridFunction (if they aren't already)
          if (mesh_order == 1)
          {
+	   //TODO : verify/check
 	    if (finalize_topo)
 	     this->FinalizeTopology();
             this->SetMeshGen();
@@ -3326,6 +3328,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
       this->RemoveInternalBoundaries();
    }
 
+   //TODO : verify/check
    if (finalize_topo)
      this->FinalizeTopology();
 
