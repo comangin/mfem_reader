@@ -1526,7 +1526,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
    int iversion;
    int binary, dsize;
    bool parallel = false;
-   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    input >> version >> binary >> dsize;
    iversion = static_cast<int>(round(10*version));
    if (iversion != 41 && iversion != 22)
@@ -1544,7 +1543,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
    gmesh = new GMSHData();
 
    PairIntVectMap *gmshE = gmesh->gmshE;
-   VerMap &vinfo=gmesh->vertices_info;
+   VerMap &vgmsh=gmesh->gmsh_vert_info;
+   VerVec &vmfem=gmesh->mfem_vert_info;
    EltMap &einfo=gmesh->elts_info;
 #ifndef MFEM_USE_MPI
    const int myrank = 0;
@@ -1555,7 +1555,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
    gmesh->parallel = true;
 #endif
 
-   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    getline(input, buff);
    // There is a number 1 in binary format
    if (binary)
@@ -1651,6 +1650,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
           input >> NumOfEntities >>NumOfVertices >> MinTagV >> MaxTagV;
           getline(input, buff);
           vertices.SetSize(NumOfVertices);
+	  vmfem.resize(NumOfVertices);
           for (uint64_t i = 0, ver = 0; i < NumOfEntities; i = i + 1)
             { 
               input >> DimEntity >> TagEntity >> parametric >> NumVertPerBlock;
@@ -1669,25 +1669,13 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                     } 
                   vertices[ver] = Vertex(coord, gmsh_dim);
                   vertices_map[index[j]] = ver;
-		  std::array<uint64_t,4> myv =
-		    std::array<uint64_t,4>{ver, DimEntity, TagEntity, 0};
-		  vinfo[index[j]] = myv;
-//TOREMOVE		  IntVectMap &myDimMap = gmesh->GPart[DimEntity];
-//TOREMOVE		  IntVectMap::const_iterator it = myDimMap.find(TagEntity);
-//TOREMOVE		  if (it != myDimMap.end())
-//TOREMOVE		    {
-//TOREMOVE		      const vector<int> &myVect = (it->second);
-//TOREMOVE		      if (myVect.size() > 1) {
-//TOREMOVE			std::cout << "T" << myrank << " point shared " << index[j] << endl;
-//TOREMOVE		      }
-//TOREMOVE		    }
-//TOREMOVE		  if (gmesh->parallel && gmesh->GPart[DimEntity][TagEntity].size() > 1)
-//TOREMOVE		    {
-//TOREMOVE		      std::cout << " point shared " << index[j] << " dim_e:" << \
-//TOREMOVE			DimEntity << " tag_e:" << TagEntity << " " <<	\
-//TOREMOVE			gmesh->GPart[DimEntity][TagEntity].size()  << std::endl;;
-//TOREMOVE		      
-//TOREMOVE		     }
+		  uint64_t vshared = (uint64_t) (gmshE[DimEntity][TagEntity].one.size() > 1);
+		  std::array<uint64_t,4> myv1 =
+		    std::array<uint64_t,4>{(uint64_t) ver, DimEntity, TagEntity, vshared};
+		  std::array<uint64_t,4> myv2 =
+		    std::array<uint64_t,4>{(uint64_t)index[j], DimEntity, TagEntity, vshared};
+		  vgmsh[index[j]] = myv1;
+		  vmfem[ver]      = myv2;
                   for (int ci = 0; ci < gmsh_dim; ++ci)
                     {
                       bb_min[ci] = (ver == 0) ? coord[ci] :
@@ -2697,7 +2685,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                    // have physical domain zero, we will throw an error.
                    if (phys_domain <= 0)
                    { 
-		     //                      has_nonpositive_phys_domain = true; //TOREMOVE
+		     // has_nonpositive_phys_domain = true; //TOREMOVE
 		     phys_domain = 99999; //TOREMOVE
                    }
                    else
@@ -2726,13 +2714,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                   {
                      elements_1D.push_back(
                         new Segment(&vert_indices[0], phys_domain));
-//                   if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
-//		     {
-//		       std::cout << " segment noelt " << no_elt << " dim_e:" << \
-//			 DimEntity << " tag_e:" << TagEntity << " " << \
-//			 GPart[DimEntity][TagEntity].size();
-//		       
-//		     }
                      if (type_of_element != 1)
                      {
                         Array<int> * hov = new Array<int>;
@@ -2756,13 +2737,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                      {
                         elements_2D.push_back(
                            new Triangle(&vert_indices[0], phys_domain));
-//			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
-//			  {
-//			    std::cout << " tria noelt " << no_elt << " dim_e:" << \
-//			      DimEntity << " tag_e:" << TagEntity << " " << \
-//			      GPart[DimEntity][TagEntity].size();
-//			    
-//			  }
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2785,13 +2759,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                      {
                         elements_2D.push_back(
                            new Quadrilateral(&vert_indices[0], phys_domain));
-//			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
-//			  {
-//			    std::cout << " quad noelt " << no_elt << " dim_e:" << \
-//			      DimEntity << " tag_e:" << TagEntity << " " << \
-//			      GPart[DimEntity][TagEntity].size();
-//			    
-//			  }
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -2820,13 +2787,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                         elements_3D.push_back(
                            new Tetrahedron(&vert_indices[0], phys_domain));
 #endif
-//			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
-//			  {
-//			    std::cout << " tet noelt " << no_elt << " dim_e:" << \
-//			      DimEntity << " tag_e:" << TagEntity << " " << \
-//			      GPart[DimEntity][TagEntity].size();
-//			    
-//			  }
 
                         if (el_order > 1)
                         {
@@ -2850,13 +2810,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                         el_order--;
                         elements_3D.push_back(
                            new Hexahedron(&vert_indices[0], phys_domain));
-//			if (gmesh->parallel && GPart[DimEntity][TagEntity].size() != 0)
-//			  {
-//			    std::cout << " hexa noelt " << no_elt << " dim_e:" << \
-//			      DimEntity << " tag_e:" << TagEntity << " " << \
-//			      GPart[DimEntity][TagEntity].size();
-//			    
-//			  }
                         if (el_order > 1)
                         {
                            Array<int> * hov = new Array<int>;
@@ -3343,8 +3296,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
       }
    } // we reach the end of the file
 
-   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
-   
    // Process set names
    if (phys_names_by_dim.size() > 0)
    {
@@ -3369,18 +3320,14 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
       }
    }
 
-   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    this->RemoveUnusedVertices();
-   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
    if (periodic)
    {
       this->RemoveInternalBoundaries();
    }
-   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
 
    if (finalize_topo)
      this->FinalizeTopology();
-   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
 
    // If a high order coordinate field was created project it onto the mesh
    if (mesh_order > 1)
@@ -3390,7 +3337,6 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
       VectorGridFunctionCoefficient NodesCoef(&Nodes_gf);
       Nodes->ProjectCoefficient(NodesCoef);
    }
-   std::cerr  << __FILE__ << " log " << __LINE__ << std::endl;
 
 }
 
