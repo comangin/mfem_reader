@@ -8,24 +8,24 @@ DefineConstant[
     Name "Parameters/0Mesh partitioner"}
   N = {4, Min 1, Max 256, Step 1,
     Name "Parameters/1Number of partitions"}
-  topology = {0, Choices{0, 1},
+  topology = {1, Choices{0, 1},
     Name "Parameters/2Create partition topology (BRep)?"}
   ghosts = {0, Choices{0, 1},
     Name "Parameters/3Create ghost cells?"}
-  physicals = {0, Choices{0, 1},
+  physicals = {1, Choices{0, 1},
     Name "Parameters/3Create new physical groups?"}
   write = {1, Choices {0, 1},
     Name "Parameters/3Write file to disk?"}
   split = {1, Choices {0, 1},
     Name "Parameters/4Write one file per partition?"}
-  periodic = {1, Choices{0="NotPeriodic", 1="Periodic"},
+  periodic = {0, Choices{0="NotPeriodic", 1="Periodic"},
     Name "Parameters/5Mesh periodicity"}
 ];
-
+partitioner = 1;
+periodic = 0;
 ep = 1.;
 mp = 0.5*ep;
 cl = mp/2.1;
-
 
 Point(1) = { 0,   0,  0, cl} ; 
 Point(2) = { 0,   0, ep, cl} ;
@@ -109,11 +109,11 @@ Volume (1) = {1};
 Surface Loop (2) = {2, 3, 6, 7, 8, 9};
 Volume (2) = {2};
 
-Physical Volume("main", 1)  = {1, 2};
+// Physical Volume("main", 1)  = {1, 2};
 
-//#For vo In {1:2}
-//#    Physical Volume(vo)  = {vo}; 
-//#EndFor
+//For vo In {1:2}
+//    Physical Volume(vo)  = {vo}; 
+//EndFor
 //For su In {1:11}
 //    Physical Surface(su)  = {su}; 
 //EndFor
@@ -124,7 +124,9 @@ Physical Volume("main", 1)  = {1, 2};
 //    Physical Point(pt)  = {pt}; 
 //EndFor
 
+Mesh 2;
 Mesh 3;
+RefineMesh;
 
 If (partitioner > 0)
   // Should we create the boundary representation of the partition entities?
@@ -160,4 +162,5 @@ If (partitioner == 2)
   Plugin(SimplePartition).NumSlicesZ = 1;
   Plugin(SimplePartition).Run;
 EndIf
+
 

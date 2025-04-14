@@ -82,6 +82,7 @@ int main(int argc, char *argv[])
 #else
    string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
    ifstream ifs(fname);
+   std::cerr << "Debug" << __FILE__ << " " << __LINE__ << std::endl;;
    MFEM_VERIFY(ifs.good(), "Mesh file " << fname << " not found.");
    ParMesh *pmesh = new ParGmshMesh(MPI_COMM_WORLD, fname);
    int dim = pmesh->Dimension();

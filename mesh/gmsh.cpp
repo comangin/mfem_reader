@@ -505,6 +505,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    MPI_Comm_size(MyComm, &NRanks);
    MPI_Comm_rank(MyComm, &MyRank);
 
+   std::cerr << "Debug" << __FILE__ << " " << __LINE__ << std::endl;;
    std::ifstream ifs(gmsh_file);
    MFEM_VERIFY(ifs.good(), "Mesh file " << gmsh_file << " not found.");
    std::string mesh_type;
@@ -512,8 +513,10 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    int curved = 0, read_gf=1;
    ifs >> std::ws;
    getline(ifs, mesh_type);
+   std::cerr << "Debug" << __FILE__ << " " << __LINE__ << std::endl;;
    Mesh::ReadGmshMesh(ifs, curved, read_gf, true);
 
+   std::cerr << "Debug" << __FILE__ << " " << __LINE__ << std::endl;;
    
    ListOfIntegerSets  groups;
    IntegerSet         group;
