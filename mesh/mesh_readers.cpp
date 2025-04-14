@@ -2986,8 +2986,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
             // Generate faces and edges so that we can define
             // FE space on the mesh
 	    //TODO : verify/check
-	    if (finalize_topo)
-	      this->FinalizeTopology();
+	    //if (finalize_topo)
+	    //  this->FinalizeTopology();
 
             // Construct GridFunction for uniformly spaced high order coords
             FiniteElementCollection* nfec;
@@ -3265,8 +3265,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
          if (mesh_order == 1)
          {
 	   //TODO : verify/check
-	    if (finalize_topo)
-	     this->FinalizeTopology();
+	    //if (finalize_topo)
+	    // this->FinalizeTopology();
             this->SetMeshGen();
             this->SetCurvature(1, true, spaceDim, Ordering::byVDIM);
          }
@@ -3329,8 +3329,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
    }
 
    //TODO : verify/check
-   if (finalize_topo)
-     this->FinalizeTopology();
+   //   if (finalize_topo)
+   this->FinalizeTopology();
 
    // If a high order coordinate field was created project it onto the mesh
    if (mesh_order > 1)

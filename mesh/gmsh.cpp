@@ -487,13 +487,19 @@ void GmshHOPyramidMapping(int order, int *map)
 #ifdef MFEM_USE_MPI
 
 typedef Triple<int,int,const std::vector<int>*> Tr_iivi;
-bool mytriple_compare (Tr_iivi a, Tr_iivi b)
+bool mytriple_iivi_compare (Tr_iivi a, Tr_iivi b)
+{
+  return (a.one < b.one);
+}
+
+typedef Triple<int,int,int> Tr_iii;
+bool mytriple_iii_compare (Tr_iii a, Tr_iii b)
 {
   return (a.one < b.one);
 }
   
 // ParGmshMesh implementation
-// This function loads a parallel GMSH mesh (that has been read previously through
+// This function loads a partitioned GMSH mesh through
 // Mesh::ReadGmshMesh and returns the parallel MFEM mesh corresponding to it.
 ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
                          int refine, int generate_edges, bool fix_orientation)
@@ -505,7 +511,6 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    MPI_Comm_size(MyComm, &NRanks);
    MPI_Comm_rank(MyComm, &MyRank);
 
-   std::cerr << "Debug" << __FILE__ << " " << __LINE__ << std::endl;;
    std::ifstream ifs(gmsh_file);
    MFEM_VERIFY(ifs.good(), "Mesh file " << gmsh_file << " not found.");
    std::string mesh_type;
@@ -513,10 +518,8 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    int curved = 0, read_gf=1;
    ifs >> std::ws;
    getline(ifs, mesh_type);
-   std::cerr << "Debug" << __FILE__ << " " << __LINE__ << std::endl;;
-   Mesh::ReadGmshMesh(ifs, curved, read_gf, true);
+   Mesh::ReadGmshMesh(ifs, curved, read_gf, false);
 
-   std::cerr << "Debug" << __FILE__ << " " << __LINE__ << std::endl;;
    
    ListOfIntegerSets  groups;
    IntegerSet         group;
@@ -534,7 +537,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    Array<int> eleRanks;
 
    // Identify shared faces
-   std::vector<int> sface_group, sfaces;
+   std::vector<Tr_iii> sfaces;
    if (Dim > 2)
    {
      for (auto const& elt : einfo) {
@@ -583,18 +586,18 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 					    procs.end(), MyRank);
 	 int shared_psize = procs.size();
 	 if (contains && shared_psize > 1) {
-	   if (MyRank == 0) 
-	     std::cout << "shared_face " << no_elt << " vert " << vlist[0] << \
-	       " " << vlist[1] << " " << vlist[2] << std::endl;
+	   //	   std::cout << "shared_face " << no_elt << " elt_type " << elt_type << std::endl;
 	   eleRanks.SetSize(shared_psize);
 	   for (int i=0; i<shared_psize; i++) eleRanks[i]=procs[i];
-	   group.Recreate(shared_psize, eleRanks);
-	   sfaces.push_back(no_elt); //TODO: change tag here for a local id
-	   sface_group.push_back(groups.Insert(group) - 1);
+	   MFEM_VERIFY(shared_psize == 2, "Strange face shared by more than two procs")
+	   group.Recreate(2, eleRanks);
+	   int id_group = groups.Insert(group) - 1;
+	   sfaces.push_back(Tr_iii(no_elt, elt_type, id_group));
 	 }
        }
      }
    }
+   std::sort (sfaces.begin(), sfaces.end(), mytriple_iii_compare);
    
    // Determine shared vertices
    std::vector<Tr_iivi> sverts;
@@ -619,7 +622,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        }
      }
    // Sort sverts based on value of GMSH vertex numbering 
-   std::sort (sverts.begin(), sverts.end(), mytriple_compare);
+   std::sort (sverts.begin(), sverts.end(), mytriple_iivi_compare);
 
    // Fill svert_group and svert_list
    Array<int> svert_group(sverts.size());
@@ -652,14 +655,84 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
       svert_lvert[i] = svert_list[i];
    }
    
+   // Build group_stria and group_squad.
+   // Also allocate shared_trias, shared_quads, and sface_lface.
    group_stria.MakeI(groups.Size()-1);
    group_squad.MakeI(groups.Size()-1);
-   //TODO: fill group_stria and group_squad
+   for (int i = 0; i < sfaces.size(); i++)
+   {
+      const Tr_iii &tr = sfaces[i];
+      int ftype = tr.two;
+      if (ftype == 2) //  3-node triangle -> TODO extend high order
+      {
+         group_stria.AddAColumnInRow(tr.three);
+      }
+      else if (ftype == 3) // 4-node quadrangle -> TODO extend high order
+      {
+         group_squad.AddAColumnInRow(tr.three);
+      }
+      else
+      {
+	MFEM_ABORT("GMSH shared face not well read");
+      }
+   }
    group_stria.MakeJ();
    group_squad.MakeJ();
+   {
+      int nst = 0;
+      for (int i = 0; i < sfaces.size(); i++)
+      {
+        const Tr_iii &tr = sfaces[i];
+        int ftype = tr.two;
+	if (ftype == 2) //Triangle TODO: add HO
+         {
+            group_stria.AddConnection(tr.three, nst++);
+         }
+         else if (ftype == 3) // 4-node quadrangle -> TODO extend high order
+         {
+            group_squad.AddConnection(tr.three, i-nst);
+         }
+      }
+      shared_trias.SetSize(nst);
+      shared_quads.SetSize(sfaces.size()-nst);
+      sface_lface.SetSize(sfaces.size());
+   }
    group_stria.ShiftUpI();
    group_squad.ShiftUpI();
 
+   // Build shared_trias and shared_quads. They are allocated above.
+   {
+      int nst = 0;
+      for (int i = 0; i < sfaces.size(); i++)
+      {
+        const Tr_iii &tr = sfaces[i];
+        const int ftype = tr.two;
+        const int no_elt = tr.one;
+	const Pair<std::array<uint64_t,3>,std::vector<int>> &elt = einfo[no_elt];
+	const std::vector<int> &vvert = elt.two;
+	int *v = nullptr, nv = 0;
+        if (ftype == 2)
+         {
+            v = shared_trias[nst++].v;
+            nv = 3;
+         }
+         else if (ftype == 3)
+         {
+            v = shared_quads[i-nst].v;
+            nv = 4;
+         }
+	//std::cout << "Face add vtx:";
+         for (int j = 0; j < nv; ++j)
+         {
+            v[j] = vvert[j] ;
+	    //  std::cout << " "<< v[j];
+         }
+	 //	 std::cout << std::endl;
+
+      }
+   }
+
+   
    group_sedge.MakeI(groups.Size()-1);
    //TODO: fill group_sedge
    group_sedge.MakeJ();
@@ -685,6 +758,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    gtopo.Create(groups, 822);
 
    //TODO : verify/check
+   // Determine sedge_ledge and sface_lface
    FinalizeParTopo();
 
       // Set nodes for higher order mesh
