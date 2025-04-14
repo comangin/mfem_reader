@@ -14,10 +14,13 @@ Questions :
      -> FaceIntegrator ...  Can leed to simplification for the end user (glag for gmsh partitioning)
 
 TODO reader GMSH// :
-  [] Finish group_stria and group_squad and group_sedge (draft before checks are consolidated)
-  [] Check if  "physical" option of GMSH build shared faces/vertices without -save_all
-  [] Extensive checks  - few things depends on group_stria/group_squad
-      (grep -i FaceIntegrator examples/*p.cpp -> ex8p.cpp to begin with)   
+  [GL] Check if  "physical" option of GMSH build shared faces/vertices without -save_all
+  [FC] Finish (-save_all) group_sedge (draft before checks are consolidated)
+  [FC/GL] Finish (-save_all) group_stria and group_squad (draft before checks are consolidated)
+  [FC] Extensive checks  - few things depends on group_stria/group_squad
+       (grep -i FaceIntegrator examples/*p.cpp -> ex8p.cpp to begin with)
+       Check with glvis the visual representation / numerical results ex1p/ex3p/ex4p/ex8p
+  ----
   [] Look at support for high order elements (find regression checks)
   [] Clean examples that use ParGmshMesh (directory examples/gmsh) :
       ex3p.cpp, ex1p.cpp, ex4p.cpp, ex8p.cpp and build others (regression tests)
@@ -28,3 +31,6 @@ TODO reader GMSH// :
   [] Write a README with recommandation for using gmsh parallel reader
   [] Check a GMSH mesh against MFEM parallel mesh (Corentin ?) and compare shared information
      Several scenarii are possible
+  [] Read pumi.cpp for the transfer field, modification of meshes
+        -> alogorithmic complexity, and associated cost
+	-> what is the realistic update frequency
