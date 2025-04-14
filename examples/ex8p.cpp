@@ -50,11 +50,14 @@ int main(int argc, char *argv[])
    // 2. Parse command-line options.
    const char *mesh_file = "../data/star.mesh";
    int order = 1;
+   bool gmsh_part = 0;
    bool visualization = 1;
 
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
                   "Mesh file to use.");
+   args.AddOption(&gmsh_part, "-gm", "--gmsh", "-no-gm", "--no-gmsh",
+                  "Gmsh partitioned mesh file");
    args.AddOption(&order, "-o", "--order",
                   "Finite element order (polynomial degree).");
    args.AddOption(&visualization, "-vis", "--visualization", "-no-vis",
@@ -74,20 +77,23 @@ int main(int argc, char *argv[])
       args.PrintOptions(cout);
    }
 
-#if 1 // !GMSH
-   Mesh *mesh = new Mesh(mesh_file, 1, 1);
-   int dim = mesh->Dimension();
-   ParMesh *pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
-   delete mesh;
-#else
-   string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
-   ifstream ifs(fname);
-   std::cerr << "Debug" << __FILE__ << " " << __LINE__ << std::endl;;
-   MFEM_VERIFY(ifs.good(), "Mesh file " << fname << " not found.");
-   ParMesh *pmesh = new ParGmshMesh(MPI_COMM_WORLD, fname);
+   ParMesh *pmesh = NULL;
+   if (!gmsh_part)
+   {
+     Mesh *mesh = new Mesh(mesh_file, 1, 1);
+     pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
+     delete mesh;
+   }
+   else
+   {
+     string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
+     ifstream ifs(fname);
+     std::cerr << "Debug" << __FILE__ << " " << __LINE__ << std::endl;;
+     MFEM_VERIFY(ifs.good(), "Mesh file " << fname << " not found.");
+     pmesh = new ParGmshMesh(MPI_COMM_WORLD, fname);
+   }
    int dim = pmesh->Dimension();
-#endif
-
+   std::cout << "Totalelt1: " << pmesh->GetGlobalNE() << std::endl;;
 
    {
       int par_ref_levels = 1;
@@ -96,6 +102,7 @@ int main(int argc, char *argv[])
          pmesh->UniformRefinement();
       }
    }
+   std::cout << "Totalelt2: " << pmesh->GetGlobalNE() << std::endl;;
 
    // 6. Define the trial, interfacial (trace) and test DPG spaces:
    //    - The trial space, x0_space, contains the non-interfacial unknowns and
@@ -133,6 +140,8 @@ int main(int argc, char *argv[])
    x0_space   = new ParFiniteElementSpace(pmesh, x0_fec);
    xhat_space = new ParFiniteElementSpace(pmesh, xhat_fec);
    test_space = new ParFiniteElementSpace(pmesh, test_fec);
+   std::cout << "nbTotal_vdofs: " << x0_space->GlobalVSize() << " " << xhat_space->GlobalVSize() << std::endl;;
+   std::cout << "nbTotal_truevdofs: " << x0_space->GlobalTrueVSize() << " " << xhat_space->GlobalTrueVSize() << std::endl;;
 
    HYPRE_BigInt glob_true_s0     =   x0_space->GlobalTrueVSize();
    HYPRE_BigInt glob_true_s1     = xhat_space->GlobalTrueVSize();
