@@ -135,7 +135,7 @@ namespace mfem
     // VERTICES //
     PetscCall(DMGetCoordinates(dm, &coordinates));
     PetscCall(DMGetDimension(dm, &dm_dim));
-    spaceDim = dm_dim; // Need modification here 
+    spaceDim = dm_dim; // Need modification here
     Dim = dm_dim;
     PetscCall(VecGetLocalSize(coordinates, &nValues));
     PetscCall(VecGetArray(coordinates, &coords));
@@ -194,11 +194,11 @@ namespace mfem
       // PHYSICAL GROUP //
       PetscBool hasLabel;
       PetscInt groupID;
-      DMHasLabel(dm, "Cell Sets", &hasLabel); 
+      DMHasLabel(dm, "Cell Sets", &hasLabel);
 
       if (hasLabel)
       {
-        DMGetLabelValue(dm, "Cell Sets", i, &groupID); 
+        DMGetLabelValue(dm, "Cell Sets", i, &groupID);
       }
 
       if (groupID == 0)
@@ -206,7 +206,6 @@ namespace mfem
 
       // TYPE ELEMENT //
       DMPlexGetCellType(dm, i, &celltype);
-
       switch (celltype)
       {
       case 0:
@@ -238,6 +237,10 @@ namespace mfem
         break;
 
       case 7:
+        int tag;
+        tag=vertex_tetra[3];
+        vertex_tetra[3]=vertex_tetra[1];
+        vertex_tetra[1]=tag;
         elements[i] = new Hexahedron(&vertex_tetra[0], groupID);
         break;
 
@@ -271,7 +274,6 @@ namespace mfem
       case 17:
         std::cerr << "Unknown or unsupported cell type: " << celltype << std::endl;
         break;
-
 
       default:
         std::cerr << "Unhandled cell type: " << celltype << std::endl;
