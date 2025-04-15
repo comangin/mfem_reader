@@ -93,8 +93,11 @@ int main(int argc, char *argv[])
      pmesh = new ParGmshMesh(MPI_COMM_WORLD, fname);
    }
    int dim = pmesh->Dimension();
-   std::cout << "Totalelt1: " << pmesh->GetGlobalNE() << " " << pmesh->GetNBE() << std::endl;;
-
+   int64_t lnbe=pmesh->GetNBE(), gnbe=0;
+   MPI_Allreduce(&lnbe,&gnbe, 1, MPI_INTEGER8, MPI_SUM, MPI_COMM_WORLD);
+   std::cout << "Totalelt1: " << pmesh->GetGlobalNE() << " " << gnbe \
+	     << std::endl;;
+   
 //TODO:try   {
 //TODO:try      int par_ref_levels = 1;
 //TODO:try      for (int l = 0; l < par_ref_levels; l++)

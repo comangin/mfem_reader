@@ -2252,7 +2252,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                      {
                         elements_1D.push_back(
                            new Segment(&vert_indices[0], phys_domain));
-			  if (type_of_element != 1)
+                          if (type_of_element != 1)
                         {
                            el_order = n_elem_nodes - 1;
                            Array<int> * hov = new Array<int>;
@@ -2650,9 +2650,9 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                const int n_elem_nodes = nodes_of_gmsh_element[type_of_element-1];
                vector<int> vert_indices(n_elem_nodes);
                PairIntVectMap *data = NULL;
-	       MFEM_VERIFY((DimEntity >= 0) && (DimEntity <= 3), "GMSH mesh file corrupted");
-	       data = &(gmshE[DimEntity]);
-
+               MFEM_VERIFY((DimEntity >= 0) && (DimEntity <= 3), "GMSH mesh file corrupted");
+               data = &(gmshE[DimEntity]);
+               MFEM_VERIFY(data->size()>0, "Error, no element read in mesh file");
                for (int el = 0; el < nb_Elements; ++el, ++totelt)
                  {
                    int no_elt;
@@ -2672,12 +2672,16 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
 
                    phys_domain = 0;
                    elem_domain = TagEntity;
-                   if( (*data).size() > 0 ) {
-                     if( ((*data)[TagEntity]).two.size() > 0 ) {
-                       phys_domain = ((*data)[TagEntity].two)[0];
-                     }
+                   const auto &eltdesc = (*data)[TagEntity];
+                   if( eltdesc.two.size() > 0 ) {
+                     phys_domain = (eltdesc.two)[0];
                    }
-             
+                   bool shared_elt = (eltdesc.one.size()>1);
+                   // Beware, if shared element is encountered
+                   // we skip this occurence in order to prevent
+                   // counting it as a boundary element
+                   if (shared_elt) continue;
+                   
                    // Non-positive attributes are not allowed in MFEM. However,
                    // by default, Gmsh sets the physical domain of all elements
                    // to zero. In the case that all elements have physical domain
@@ -2685,18 +2689,18 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                    // have physical domain zero, we will throw an error.
                    if (phys_domain <= 0)
                    { 
-		     // has_nonpositive_phys_domain = true; //TOREMOVE
-		     phys_domain = 99999; //TOREMOVE
+                     // has_nonpositive_phys_domain = true; //TOREMOVE
+                     phys_domain = 99999; //TOREMOVE
                    }
                    else
                    {
                      has_positive_phys_domain = true;
                    }
 
-		   einfo[no_elt].one =
-		     std::array<uint64_t,3>{ DimEntity, TagEntity, (uint64_t)type_of_element };
-		   einfo[no_elt].two = vert_indices;
-		   
+                   einfo[no_elt].one =
+                     std::array<uint64_t,3>{ DimEntity, TagEntity, (uint64_t)type_of_element };
+                   einfo[no_elt].two = vert_indices;
+                   
                    // initialize the mesh element
                    int el_order = 11;
                    switch (type_of_element)
@@ -2894,10 +2898,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                       << "MFEM only supports positive element attributes.\n"
                       << "Setting element attributes to 1.\n\n";
          }
-	 std::array<uint64_t,4> g_veltsize { elements_0D.size(), elements_1D.size(), elements_2D.size(), elements_3D.size()}; //TOREMOVE
-	 cout << "Totalelts read " << g_veltsize[3] << " " << g_veltsize[2] << " " << g_veltsize[1] << " " << g_veltsize[0] << std::endl; //TOREMOVE
-	 
-	 
+         
          if (!elements_3D.empty())
          {
             Dim = 3;
@@ -2988,8 +2989,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
 
             // Generate faces and edges so that we can define
             // FE space on the mesh
-	    //TODO : verify/check
-	    this->FinalizeTopology(finalize_topo);
+            //TODO : verify/check
+            this->FinalizeTopology(finalize_topo);
             // Construct GridFunction for uniformly spaced high order coords
             FiniteElementCollection* nfec;
             FiniteElementSpace* nfes;
@@ -3193,47 +3194,47 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
          int num_per_ent;
          input >> num_per_ent;
          getline(input, buff); // Read end-of-line
-	 if (iversion == 22)
-	   {
-	     for (int i = 0; i < num_per_ent; i++)
-	       {
-		 int num_nodes;
-		 getline(input, buff); // Read and ignore entity dimension and tags
-		 getline(input, buff); // If affine mapping exist, read and ignore
-		 if (!strncmp(buff.c_str(), "Affine", 6))
-		   {
-		     input >> num_nodes;
-		   }
-		 else
-		   {
-		     num_nodes = atoi(buff.c_str());
-		   }
-		 for (int j=0; j<num_nodes; j++)
-		   {
-		     int slave, master;
-		     input >> slave >> master;
-		     v2v[slave - 1] = master - 1;
-		   }
-		 getline(input, buff); // Read end-of-line
-	       }
-	   }
-	 if (iversion == 41)
-	   {
-	     for (int i = 0; i < num_per_ent; i++)
-	       {
-		 getline(input, buff); // Read and ignore entity dimension and tags
-		 getline(input, buff); // Discard Affine line
-		 int num_nodes;
-		 input >> num_nodes;
-		 for (int j=0; j<num_nodes; j++)
-		   {
-		     int slave, master;
-		     input >> slave >> master;
-		     v2v[slave - 1] = master - 1;
-		   }
-		 getline(input, buff); // Read end-of-line
-	       }
-	   }
+         if (iversion == 22)
+           {
+             for (int i = 0; i < num_per_ent; i++)
+               {
+                 int num_nodes;
+                 getline(input, buff); // Read and ignore entity dimension and tags
+                 getline(input, buff); // If affine mapping exist, read and ignore
+                 if (!strncmp(buff.c_str(), "Affine", 6))
+                   {
+                     input >> num_nodes;
+                   }
+                 else
+                   {
+                     num_nodes = atoi(buff.c_str());
+                   }
+                 for (int j=0; j<num_nodes; j++)
+                   {
+                     int slave, master;
+                     input >> slave >> master;
+                     v2v[slave - 1] = master - 1;
+                   }
+                 getline(input, buff); // Read end-of-line
+               }
+           }
+         if (iversion == 41)
+           {
+             for (int i = 0; i < num_per_ent; i++)
+               {
+                 getline(input, buff); // Read and ignore entity dimension and tags
+                 getline(input, buff); // Discard Affine line
+                 int num_nodes;
+                 input >> num_nodes;
+                 for (int j=0; j<num_nodes; j++)
+                   {
+                     int slave, master;
+                     input >> slave >> master;
+                     v2v[slave - 1] = master - 1;
+                   }
+                 getline(input, buff); // Read end-of-line
+               }
+           }
          // Follow existing long chains of slave->master in v2v array.
          // Upon completion of this loop, each v2v[slave] will point to a true
          // master vertex. This algorithm is useful for periodicity defined in
@@ -3265,8 +3266,8 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
          // Convert nodes to discontinuous GridFunction (if they aren't already)
          if (mesh_order == 1)
          {
-	   //TODO : verify/check
-	    this->FinalizeTopology(finalize_topo);
+           //TODO : verify/check
+            this->FinalizeTopology(finalize_topo);
             this->SetMeshGen();
             this->SetCurvature(1, true, spaceDim, Ordering::byVDIM);
          }
