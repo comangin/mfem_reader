@@ -2894,7 +2894,9 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                       << "MFEM only supports positive element attributes.\n"
                       << "Setting element attributes to 1.\n\n";
          }
-
+	 std::array<uint64_t,4> g_veltsize { elements_0D.size(), elements_1D.size(), elements_2D.size(), elements_3D.size()}; //TOREMOVE
+	 cout << "Totalelts read " << g_veltsize[3] << " " << g_veltsize[2] << " " << g_veltsize[1] << " " << g_veltsize[0] << std::endl; //TOREMOVE
+	 
          if (!elements_3D.empty())
          {
             Dim = 3;

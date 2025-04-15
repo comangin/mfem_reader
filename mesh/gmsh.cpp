@@ -721,13 +721,13 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
             v = shared_quads[i-nst].v;
             nv = 4;
          }
-	//std::cout << "Face add vtx:";
+	//std::cout << "Face add vtx:"; //TOREMOVE
          for (int j = 0; j < nv; ++j)
          {
             v[j] = vvert[j] ;
-	    //  std::cout << " "<< v[j];
+	    //  std::cout << " "<< v[j]; //TOREMOVE
          }
-	 //	 std::cout << std::endl;
+	 //	 std::cout << std::endl; //TOREMOVE
 
       }
    }

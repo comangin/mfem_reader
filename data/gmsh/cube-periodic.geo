@@ -23,7 +23,7 @@ DefineConstant[
 ];
 ep = 1.;
 mp = 0.5*ep;
-cl = mp/2.1;
+cl = mp/1.8;
 
 Point(1) = { 0,   0,  0, cl} ; 
 Point(2) = { 0,   0, ep, cl} ;

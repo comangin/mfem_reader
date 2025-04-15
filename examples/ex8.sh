@@ -6,6 +6,7 @@ MFEM_DIR=${SCRIPT_DIR}/..
  gmsh -3 -refine -setnumber partitioner 0 periodic-cube.geo
  gmsh -3 -refine -setnumber partitioner 1 cube-periodic.geo
  gmsh -3 -refine -setnumber partitioner 0 cube-periodic.geo
+ cp cube-per*msh periodic-cube*msh ../../build/examples
  )
 (cd ${MFEM_DIR}/build/examples;
  make -j 12 ex8p;
