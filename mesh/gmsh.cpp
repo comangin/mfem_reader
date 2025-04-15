@@ -11,6 +11,10 @@
 
 #include "gmsh.hpp"
 #include "vtk.hpp"
+#include "mesh_headers.hpp"
+#include "../fem/fem.hpp"
+
+using namespace std;
 
 namespace mfem
 {
@@ -520,7 +524,6 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    getline(ifs, mesh_type);
    Mesh::ReadGmshMesh(ifs, curved, read_gf, false);
 
-   
    ListOfIntegerSets  groups;
    IntegerSet         group;
 
@@ -530,6 +533,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 
    MFEM_ASSERT(Dim >= 3 || Dim < 1 || GetNFaces() == 0,
                "[proc " << MyRank << "]: invalid state");
+
    PairIntVectMap *gmshE = gmesh->gmshE;
    VerMap &vgmsh = gmesh->gmsh_vert_info;
    VerVec &vmfem = gmesh->mfem_vert_info;
@@ -546,36 +550,6 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        const uint64_t TagEntity = elt.second.one[1];
        const uint64_t elt_type  = elt.second.one[2];
 
-//     // Try to find out && compute shared faces
-//       if (DimEntity == 3 && Dim == 3)  {
-//	 // Get vertices for this element
-//	 const std::vector<int> &vlist = elt.second.two;
-//	 const uint vsize = vlist.size();
-//	 uint vshared = 0;
-//	 std::vector<std::vector<int>> vcollect;
-//	 // loop on all vertices
-//	 for (int j=0; j<vsize; j++)
-//	   {
-//	     std::array<uint64_t,4> &info = vmfem[vlist[j]];
-//	     vshared +=  info[3];
-//	     // list of processes associated with this vertex
-//	     vcollect.push_back(gmshE[info[1]][info[2]].one);
-//	   }
-//	 if (vshared > 2)
-//	   {
-//	     if (MyRank == 0) {
-//	       std::cerr << "elt_vlist  "<< vlist[0] << \
-//		 " " << vlist[1] << " " << vlist[2] << " " << vlist[3] << std::endl;
-//	     
-//	       for (int j=0; j<vsize; j++) {
-//		 for (int k=0; k<vcollect[j].size(); k++)
-//		   std::cerr << " "<< vcollect[j][k];
-//		 std::cerr << std::endl;
-//	       }         //   tv[1]; tv[2]; tv[3];
-//	     }		 //   tv[2]; tv[0]; tv[3];
-//			 //   tv[0]; tv[1]; tv[3];
-//          }		 //   tv[1]; tv[0]; tv[2];
-
        if (DimEntity == 2) {
 	 const std::vector<int> &vlist = elt.second.two;
 	 const auto &myPair = gmshE[DimEntity][TagEntity];
@@ -586,7 +560,6 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 					    procs.end(), MyRank);
 	 int shared_psize = procs.size();
 	 if (contains && shared_psize > 1) {
-	   //	   std::cout << "shared_face " << no_elt << " elt_type " << elt_type << std::endl;
 	   eleRanks.SetSize(shared_psize);
 	   for (int i=0; i<shared_psize; i++) eleRanks[i]=procs[i];
 	   MFEM_VERIFY(shared_psize == 2, "Strange face shared by more than two procs")
@@ -596,8 +569,39 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 	 }
        }
      }
+     std::sort (sfaces.begin(), sfaces.end(), mytriple_iii_compare);
    }
-   std::sort (sfaces.begin(), sfaces.end(), mytriple_iii_compare);
+
+   // Identify shared edges
+   std::vector<Tr_iii> sedges;
+   if (Dim > 1)
+   {
+     for (auto const& elt : einfo) {
+       const int no_elt = elt.first;
+       const uint64_t DimEntity = elt.second.one[0];
+       const uint64_t TagEntity = elt.second.one[1];
+       const uint64_t elt_type  = elt.second.one[2];
+
+       if (DimEntity == 1) {
+	 const std::vector<int> &vlist = elt.second.two;
+	 const auto &myPair = gmshE[DimEntity][TagEntity];
+	 const std::vector<int> &procs = myPair.one;       
+	 const std::vector<int> &phys  = myPair.two;       
+	 MFEM_VERIFY (procs.size() > 0 || phys.size() > 0, "GMSH reader internal error");
+	 bool contains = std::binary_search(procs.begin(),
+					    procs.end(), MyRank);
+	 int shared_psize = procs.size();
+	 if (contains && shared_psize > 1) {
+	   eleRanks.SetSize(shared_psize);
+	   for (int i=0; i<shared_psize; i++) eleRanks[i]=procs[i];
+	   group.Recreate(eleRanks.Size(), eleRanks);
+	   int id_group = groups.Insert(group) - 1;
+	   sedges.push_back(Tr_iii(no_elt, elt_type, id_group));
+	 }
+       }
+     }
+     std::sort (sedges.begin(), sedges.end(), mytriple_iii_compare);
+   }
    
    // Determine shared vertices
    std::vector<Tr_iivi> sverts;
@@ -615,12 +619,15 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        PairIntVectMap::const_iterator it = myDimMap.find(TagEntity);
        MFEM_VERIFY(it != myDimMap.end(), "Error reading GMSH file");
        // If more than one proc sharing this vertex, do stuff
-       const std::vector<int> &shared_procs = (it->second.one);
-       const int shared_psize = shared_procs.size();
-       if (shared_psize > 1) {
+       const std::vector<int> &procs = (it->second.one);
+       bool contains = std::binary_search(procs.begin(),
+					  procs.end(), MyRank);
+       const int shared_psize = procs.size();
+       if ((shared_psize > 1) && contains) {
 	 sverts.push_back(Tr_iivi(gmsh_vindex,ver,&(it->second.one)));
        }
      }
+
    // Sort sverts based on value of GMSH vertex numbering 
    std::sort (sverts.begin(), sverts.end(), mytriple_iivi_compare);
 
@@ -643,17 +650,6 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
        svert_group[j] = (groups.Insert(group) - 1);
        j++;
      }
-   
-   // Erase all data within svert
-   sverts.resize(0);
-
-   // Fill svert_lvert the list of shared vertex (mfem numbering)
-   // TODO : remove svert_list -> svert_lvert can be directly filled
-   svert_lvert.SetSize(svert_list.Size());
-   for (int i = 0; i < svert_list.Size(); i++)
-   {
-      svert_lvert[i] = svert_list[i];
-   }
    
    // Build group_stria and group_squad.
    // Also allocate shared_trias, shared_quads, and sface_lface.
@@ -700,6 +696,33 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    group_stria.ShiftUpI();
    group_squad.ShiftUpI();
 
+   // Build group_sedge
+   group_sedge.MakeI(groups.Size()-1);
+   for (int i = 0; i < sedges.size(); i++)
+   {
+      group_sedge.AddAColumnInRow(sedges[i].three);
+   }
+   group_sedge.MakeJ();
+   for (int i = 0; i < sedges.size(); i++)
+   {
+      group_sedge.AddConnection(sedges[i].three, i);
+   }
+   group_sedge.ShiftUpI();
+
+   // Build group_svert
+   group_svert.MakeI(groups.Size()-1);
+   for (int i = 0; i < svert_group.Size(); i++)
+   {
+      group_svert.AddAColumnInRow(svert_group[i]);
+   }
+   group_svert.MakeJ();
+   for (int i = 0; i < svert_group.Size(); i++)
+   {
+      group_svert.AddConnection(svert_group[i], i);
+   }
+   group_svert.ShiftUpI();
+
+   
    // Build shared_trias and shared_quads. They are allocated above.
    {
       int nst = 0;
@@ -732,41 +755,52 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
       }
    }
 
+   // Build shared_edges and allocate sedge_ledge
+   shared_edges.SetSize(sedges.size());
+   sedge_ledge. SetSize(sedges.size());
+   for (int i = 0; i < sedges.size(); i++)
+   {
+      const Tr_iii &tr = sedges[i];
+      const int ftype = tr.two;
+      const int no_elt = tr.one;
+      const Pair<std::array<uint64_t,3>,std::vector<int>> &elt = einfo[no_elt];
+      const std::vector<int> &vvert = elt.two;
+
+      int id1, id2;
+      id1 = vvert[0];
+      id2 = vvert[1];
+      if (id1 > id2) { swap(id1,id2); }
+
+      shared_edges[i] = new Segment(id1, id2, 1);
+   }
    
-   group_sedge.MakeI(groups.Size()-1);
-   //TODO: fill group_sedge
-   group_sedge.MakeJ();
-   group_sedge.ShiftUpI();
-
-   // Build group_svert
-   group_svert.MakeI(groups.Size()-1);
-   for (int i = 0; i < svert_group.Size(); i++)
+   // Fill svert_lvert the list of shared vertex (mfem numbering)
+   // TODO(refactoring) : remove svert_list -> svert_lvert can be directly filled
+   svert_lvert.SetSize(svert_list.Size());
+   for (int i = 0; i < svert_list.Size(); i++)
    {
-      group_svert.AddAColumnInRow(svert_group[i]);
+      svert_lvert[i] = svert_list[i];
    }
-   group_svert.MakeJ();
-   for (int i = 0; i < svert_group.Size(); i++)
-   {
-      group_svert.AddConnection(svert_group[i], i);
-   }
-   group_svert.ShiftUpI();
-
-   shared_edges.SetSize(0);  
-   sedge_ledge. SetSize(0);
-
-
+   
+   // Build the group communication topology
    gtopo.Create(groups, 822);
 
-   //TODO : verify/check
    // Determine sedge_ledge and sface_lface
    FinalizeParTopo();
 
-      // Set nodes for higher order mesh
+   // Set nodes for higher order mesh
+   curved = false;
    if (curved) // curved mesh
    {
      //TODO ??? -> see pumi.cpp
    }
    Finalize(refine, fix_orientation);
+//
+//   // Erase all data within local data structs
+//   sedges.resize(0);
+//   sverts.resize(0);
+//   sfaces.resize(0);
+
 }
 
 #endif  // MFEM_USE_MPI

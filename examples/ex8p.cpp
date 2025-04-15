@@ -93,16 +93,16 @@ int main(int argc, char *argv[])
      pmesh = new ParGmshMesh(MPI_COMM_WORLD, fname);
    }
    int dim = pmesh->Dimension();
-   std::cout << "Totalelt1: " << pmesh->GetGlobalNE() << std::endl;;
+   std::cout << "Totalelt1: " << pmesh->GetGlobalNE() << " " << pmesh->GetNBE() << std::endl;;
 
-   {
-      int par_ref_levels = 1;
-      for (int l = 0; l < par_ref_levels; l++)
-      {
-         pmesh->UniformRefinement();
-      }
-   }
-   std::cout << "Totalelt2: " << pmesh->GetGlobalNE() << std::endl;;
+//TODO:try   {
+//TODO:try      int par_ref_levels = 1;
+//TODO:try      for (int l = 0; l < par_ref_levels; l++)
+//TODO:try      {
+//TODO:try         pmesh->UniformRefinement();
+//TODO:try      }
+//TODO:try   }
+//TODO:try   std::cout << "Totalelt2: " << pmesh->GetGlobalNE() << " " << pmesh->GetNBE() << std::endl;;
 
    // 6. Define the trial, interfacial (trace) and test DPG spaces:
    //    - The trial space, x0_space, contains the non-interfacial unknowns and
