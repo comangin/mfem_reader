@@ -522,7 +522,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    int curved = 0, read_gf=1;
    ifs >> std::ws;
    getline(ifs, mesh_type);
-   Mesh::ReadGmshMesh(ifs, curved, read_gf, false);
+   Mesh::ReadGmshMesh(ifs, curved, read_gf, true); //include FinalizeTopology
 
    ListOfIntegerSets  groups;
    IntegerSet         group;
@@ -555,7 +555,8 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 	 const auto &myPair = gmshE[DimEntity][TagEntity];
 	 const std::vector<int> &procs = myPair.one;       
 	 const std::vector<int> &phys  = myPair.two;       
-	 MFEM_VERIFY (procs.size() > 0 || phys.size() > 0, "GMSH reader internal error");
+	 MFEM_VERIFY (procs.size() > 0 || phys.size() > 0,
+		      "GMSH reader internal error");
 	 bool contains = std::binary_search(procs.begin(),
 					    procs.end(), MyRank);
 	 int shared_psize = procs.size();
@@ -587,7 +588,8 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 	 const auto &myPair = gmshE[DimEntity][TagEntity];
 	 const std::vector<int> &procs = myPair.one;       
 	 const std::vector<int> &phys  = myPair.two;       
-	 MFEM_VERIFY (procs.size() > 0 || phys.size() > 0, "GMSH reader internal error");
+	 MFEM_VERIFY (procs.size() > 0 || phys.size() > 0,
+		      "GMSH reader internal error");
 	 bool contains = std::binary_search(procs.begin(),
 					    procs.end(), MyRank);
 	 int shared_psize = procs.size();
@@ -624,6 +626,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 					  procs.end(), MyRank);
        const int shared_psize = procs.size();
        if ((shared_psize > 1) && contains) {
+//TOREMOVE	 std::cout << MyRank << " shared vertex " << ver << std::endl;
 	 sverts.push_back(Tr_iivi(gmsh_vindex,ver,&(it->second.one)));
        }
      }
@@ -722,7 +725,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    }
    group_svert.ShiftUpI();
 
-   
+ 
    // Build shared_trias and shared_quads. They are allocated above.
    {
       int nst = 0;
@@ -734,12 +737,12 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 	const Pair<std::array<uint64_t,3>,std::vector<int>> &elt = einfo[no_elt];
 	const std::vector<int> &vvert = elt.two;
 	int *v = nullptr, nv = 0;
-        if (ftype == 2)
+        if (ftype == 2) // Triangle for GMSH
          {
             v = shared_trias[nst++].v;
             nv = 3;
          }
-         else if (ftype == 3)
+         else if (ftype == 3) // Quad for GMSH
          {
             v = shared_quads[i-nst].v;
             nv = 4;
@@ -795,8 +798,8 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
      //TODO ??? -> see pumi.cpp
    }
    Finalize(refine, fix_orientation);
-//
-//   // Erase all data within local data structs
+
+   // Erase all data within local data structs
 //   sedges.resize(0);
 //   sverts.resize(0);
 //   sfaces.resize(0);

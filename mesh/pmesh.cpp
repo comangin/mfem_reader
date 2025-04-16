@@ -917,7 +917,6 @@ void ParMesh::FinalizeParTopo()
    if (sface_lface.Size())
    {
      // Counting shared faces sface_lface.Size()
-     std::cout << "shared faces nb="<<  sface_lface.Size() << std::endl;
       auto faces_tbl = std::unique_ptr<STable3D>(GetFacesTable());
       for (int st = 0; st < nst; st++)
       {

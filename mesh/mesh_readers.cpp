@@ -1791,7 +1791,7 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
 	  input >> xmax >> ymax >> zmax >> n_tags;
 	  MFEM_VERIFY(gmshE[0][tag].two.size() == 0, "Internal problem mesh_readers")
 	  for (int j = 0; j < n_tags; ++j) {
-	    input >> phystag;
+	    input >> tag_i;
 	    gmshE[0][tag].two.push_back(tag_i);
 	  }
 	}
@@ -2676,31 +2676,33 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                    if( eltdesc.two.size() > 0 ) {
                      phys_domain = (eltdesc.two)[0];
                    }
-                   bool shared_elt = (eltdesc.one.size()>1);
+                   // Save the essential info for this element
+                   // for post-processing in gmsh.cpp
+                   einfo[no_elt].one =
+                     std::array<uint64_t,3>{ DimEntity, TagEntity,
+                        (uint64_t)type_of_element };
+                   einfo[no_elt].two = vert_indices;
+
                    // Beware, if shared element is encountered
                    // we skip this occurence in order to prevent
                    // counting it as a boundary element
+                   bool shared_elt = (eltdesc.one.size()>1);
                    if (shared_elt) continue;
-                   
+
                    // Non-positive attributes are not allowed in MFEM. However,
                    // by default, Gmsh sets the physical domain of all elements
                    // to zero. In the case that all elements have physical domain
                    // zero, we will given them attribute 1. If only some elements
                    // have physical domain zero, we will throw an error.
                    if (phys_domain <= 0)
-                   { 
-                     // has_nonpositive_phys_domain = true; //TOREMOVE
-                     phys_domain = 99999; //TOREMOVE
+                   {
+                     has_nonpositive_phys_domain = true; 
                    }
                    else
                    {
                      has_positive_phys_domain = true;
                    }
 
-                   einfo[no_elt].one =
-                     std::array<uint64_t,3>{ DimEntity, TagEntity, (uint64_t)type_of_element };
-                   einfo[no_elt].two = vert_indices;
-                   
                    // initialize the mesh element
                    int el_order = 11;
                    switch (type_of_element)
