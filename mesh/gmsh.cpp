@@ -563,7 +563,8 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
 	 if (contains && shared_psize > 1) {
 	   eleRanks.SetSize(shared_psize);
 	   for (int i=0; i<shared_psize; i++) eleRanks[i]=procs[i];
-	   MFEM_VERIFY(shared_psize == 2, "Strange face shared by more than two procs")
+	   MFEM_VERIFY(shared_psize == 2,
+		       "Strange face shared by more than two procs")
 	   group.Recreate(2, eleRanks);
 	   int id_group = groups.Insert(group) - 1;
 	   sfaces.push_back(Tr_iii(no_elt, elt_type, id_group));
@@ -799,6 +800,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    }
    Finalize(refine, fix_orientation);
 
+   EnsureParNodes();   
    // Erase all data within local data structs
 //   sedges.resize(0);
 //   sverts.resize(0);
