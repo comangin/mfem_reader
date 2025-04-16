@@ -1,10 +1,11 @@
+SetFactory("OpenCASCADE");
 // 0 for tetrahedra, 1 for hexahedra
 tet_or_hex = 0;
 // We now define several constants to fine-tune how the mesh will be partitioned
 DefineConstant[
   partitioner = {0, Choices{0="None", 1="Metis", 2="SimplePartition"},
     Name "Parameters/0Mesh partitioner"}
-  N = {4, Min 1, Max 256, Step 1,
+  N = {2, Min 1, Max 256, Step 1,
     Name "Parameters/1Number of partitions"}
   topology = {1, Choices{0, 1},
     Name "Parameters/2Create partition topology (BRep)?"}
@@ -25,7 +26,7 @@ Point(2) = {1, 0, 0, 1.0};
 Point(3) = {1, 1, 0, 1.0};
 Point(4) = {0, 1, 0, 1.0};
 
-Characteristic Length {:} = 0.25;
+Characteristic Length {:} = .5;
 
 Line(1) = {1, 2};
 Line(2) = {2, 3};
@@ -45,11 +46,11 @@ If (tet_or_hex > 0)
    Recombine Surface {1};
    out[] = Extrude {0, 0, 1} { Surface{1}; Layers{4}; Recombine; };
 Else
-   out[] = Extrude {0, 0, 1} { Surface{1}; Layers{4}; };
+   out[] = Extrude {0, 0, 1} { Surface{1}; Layers{2};  };
 EndIf
 
-Physical Volume(1) = {out[1]}; 
-Physical Surface(1) = {1,out[0],out[2],out[3],out[4],out[5]};
+Physical Volume(1) = {1}; 
+//Physical Surface(1) = {1,out[0],out[2],out[3],out[4],out[5]};
 
 Mesh 3;
 
@@ -88,9 +89,9 @@ EndIf
 
 If (partitioner == 2)
   // Use the `SimplePartition' plugin to create chessboard-like partitions
-  Plugin(SimplePartition).NumSlicesX = N;
+  Plugin(SimplePartition).NumSlicesX = 1;
   Plugin(SimplePartition).NumSlicesY = 1;
-  Plugin(SimplePartition).NumSlicesZ = 1;
+  Plugin(SimplePartition).NumSlicesZ = N;
   Plugin(SimplePartition).Run;
 EndIf
 

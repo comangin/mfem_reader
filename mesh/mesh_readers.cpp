@@ -1547,11 +1547,11 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
    VerVec &vmfem=gmesh->mfem_vert_info;
    EltMap &einfo=gmesh->elts_info;
 #ifndef MFEM_USE_MPI
-   const int myrank = 0;
+   const int MyRank = 0;
 #else
    int rank;
    MPI_Comm_rank(GetGlobalMPI_Comm(), &rank);
-   const int myrank = rank;
+   const int MyRank = rank;
    gmesh->parallel = true;
 #endif
 
@@ -2673,8 +2673,10 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                    phys_domain = 0;
                    elem_domain = TagEntity;
                    const auto &eltdesc = (*data)[TagEntity];
-                   if( eltdesc.two.size() > 0 ) {
-                     phys_domain = (eltdesc.two)[0];
+                   const std::vector<int> &procs = eltdesc.one;
+                   const std::vector<int> &phys  = eltdesc.two;
+                   if( phys.size() > 0 ) {
+                     phys_domain = phys[0];
                    }
                    // Save the essential info for this element
                    // for post-processing in gmsh.cpp
@@ -2687,7 +2689,12 @@ void Mesh::ReadGmshMesh(std::istream &input, int &curved, int &read_gf, bool fin
                    // we skip this occurence in order to prevent
                    // counting it as a boundary element
                    bool shared_elt = (eltdesc.one.size()>1);
-                   if (shared_elt) continue;
+		   bool contains = std::binary_search(procs.begin(),
+						      procs.end(), MyRank);
+		   if (shared_elt && !contains)
+		     MFEM_ABORT ("GMSH reader internal error / partition");
+		   
+                   if (shared_elt && contains) continue;
 
                    // Non-positive attributes are not allowed in MFEM. However,
                    // by default, Gmsh sets the physical domain of all elements

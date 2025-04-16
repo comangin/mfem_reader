@@ -10,10 +10,10 @@ MFEM_DIR=${SCRIPT_DIR}/..
  )
 (cd ${MFEM_DIR}/build/examples;
  make -j 12 ex8p;
- mpirun  -np 4 ./ex8p -no-gp -m periodic-cube.msh >out_ex8a.no-gp
- mpirun  -np 4 ./ex8p -gp -m    periodic-cube_    >out_ex8a.gp
- mpirun  -np 4 ./ex8p -no-gp -m cube-periodic.msh >out_ex8b.no-gp
- mpirun  -np 4 ./ex8p -gp -m    cube-periodic_    >out_ex8b.gp
+ mpirun  -np 2 ./ex8p -no-gp -m periodic-cube.msh >out_ex8a.no-gp
+ mpirun  -np 2 ./ex8p -gp -m    periodic-cube_    >out_ex8a.gp
+ mpirun  -np 2 ./ex8p -no-gp -m cube-periodic.msh >out_ex8b.no-gp
+ mpirun  -np 2 ./ex8p -gp -m    cube-periodic_    >out_ex8b.gp
  for i in out_ex8*; do grep Total $i> r_$i; done
  echo " "
  echo "Result of the diff 8a :"

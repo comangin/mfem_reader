@@ -6,7 +6,7 @@
 DefineConstant[
   partitioner = {0, Choices{0="None", 1="Metis", 2="SimplePartition"},
     Name "Parameters/0Mesh partitioner"}
-  N = {4, Min 1, Max 256, Step 1,
+  N = {2, Min 1, Max 256, Step 1,
     Name "Parameters/1Number of partitions"}
   topology = {1, Choices{0, 1},
     Name "Parameters/2Create partition topology (BRep)?"}
@@ -23,7 +23,7 @@ DefineConstant[
 ];
 ep = 1.;
 mp = 0.5*ep;
-cl = mp/1.8;
+cl = 1.;
 
 Point(1) = { 0,   0,  0, cl} ; 
 Point(2) = { 0,   0, ep, cl} ;
@@ -39,6 +39,8 @@ Point(9)  = { ep,  0,  0, cl} ;
 Point(10) = { ep,  0, ep, cl} ;
 Point(11) = { ep, ep, ep, cl} ;
 Point(12) = { ep, ep,  0, cl} ;
+
+Characteristic Length {:} = .25;
 
 Line(1) = {1,2}; 
 Line(2) = {2,3};
