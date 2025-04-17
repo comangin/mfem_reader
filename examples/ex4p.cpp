@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
    // 2. Parse command-line options.
    const char *mesh_file = "../data/star.mesh";
    int order = 1;
+   bool gmsh_part = 0;
    bool set_bc = true;
    bool static_cond = false;
    bool hybridization = false;
@@ -77,6 +78,8 @@ int main(int argc, char *argv[])
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
                   "Mesh file to use.");
+   args.AddOption(&gmsh_part, "-gp", "--gmsh-part", "-no-gp", "--no-gmsh-part",
+                  "Gmsh partitioned mesh file");
    args.AddOption(&order, "-o", "--order",
                   "Finite element order (polynomial degree).");
    args.AddOption(&set_bc, "-bc", "--impose-bc", "-no-bc", "--dont-impose-bc",
@@ -114,28 +117,32 @@ int main(int argc, char *argv[])
    Device device(device_config);
    if (myid == 0) { device.Print(); }
 
-#if 0 // !GMSH
-   Mesh *mesh = new Mesh(mesh_file, 1, 1);
-   ParMesh *pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
-   delete mesh;
-#else
-   string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
-   ifstream ifs(fname);
-   MFEM_VERIFY(ifs.good(), "Mesh file " << fname << " not found.");
-   ParMesh *pmesh = new ParGmshMesh(MPI_COMM_WORLD, fname);
-#endif
-   
+   ParMesh *pmesh = NULL;
+   if (!gmsh_part)
+   {
+     Mesh *mesh = new Mesh(mesh_file, 1, 1);
+     pmesh = new ParMesh(MPI_COMM_WORLD, *mesh);
+     delete mesh;
+   }
+   else
+   {
+     string fname(MakeParFilename(mesh_file, myid+1,".msh",1));
+     ifstream ifs(fname);
+     MFEM_VERIFY(ifs.good(), "Mesh file " << fname << " not found.");
+     pmesh = new ParGmshMesh(MPI_COMM_WORLD, fname);
+   }
+     
    int dim = pmesh->Dimension();
    int sdim = pmesh->SpaceDimension();
 
 
-   {
-      int par_ref_levels = 2;
-      for (int l = 0; l < par_ref_levels; l++)
-      {
-         pmesh->UniformRefinement();
-      }
-   }
+//   {
+//      int par_ref_levels = 2;
+//      for (int l = 0; l < par_ref_levels; l++)
+//      {
+//         pmesh->UniformRefinement();
+//      }
+//   }
 
    // 7. Define a parallel finite element space on the parallel mesh. Here we
    //    use the Raviart-Thomas finite elements of the specified order.

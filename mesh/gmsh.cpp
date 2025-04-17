@@ -522,8 +522,48 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    int curved = 0, read_gf=1;
    ifs >> std::ws;
    getline(ifs, mesh_type);
-   Mesh::ReadGmshMesh(ifs, curved, read_gf, true); //include FinalizeTopology
+   // false -> FinalizeTopology avoiding generating bdr
+   Mesh::ReadGmshMesh(ifs, curved, read_gf, false); 
+   SetMeshGen();
+   ReduceMeshGen();
 
+//   //-- [BEGIN] See ParMesh constructor
+//   NumOfEdges = NumOfFaces = 0;
+//   
+//   if (Dim > 1)
+//     {
+//       el_to_edge = new Table;
+//       NumOfEdges = Mesh::GetElementToEdgeTable(*el_to_edge);
+//     }
+//   
+//   STable3D *faces_tbl = NULL;
+//   if (Dim == 3)
+//     {
+//       faces_tbl = GetElementToFaceTable(1);
+//     }
+//   
+//   GenerateFaces();
+//   
+//   // Make sure the be_to_face array is initialized.
+//   // In 2D, it will be set in the above call to Mesh::GetElementToEdgeTable.
+//   // In 3D, it will be set in GetElementToFaceTable.
+//   // In 1D, we need to set it manually.
+//   if (Dim == 1)
+//     {
+//       be_to_face.SetSize(NumOfBdrElements);
+//       for (int i = 0; i < NumOfBdrElements; ++i)
+//         {
+//	   be_to_face[i] = boundary[i]->GetVertices()[0];
+//         }
+//     }
+//   
+//   MFEM_ASSERT(GetNFaces() == 0 || Dim >= 3, "");
+//   
+//   Array<int> face_group(this->GetNFaces());
+//   Table *vert_element = this->GetVertexToElementTable(); // we must delete this
+//   //-- [END] See ParMesh constructor
+
+   
    ListOfIntegerSets  groups;
    IntegerSet         group;
 
@@ -801,11 +841,6 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    Finalize(refine, fix_orientation);
 
    EnsureParNodes();   
-   // Erase all data within local data structs
-//   sedges.resize(0);
-//   sverts.resize(0);
-//   sfaces.resize(0);
-
 }
 
 #endif  // MFEM_USE_MPI
