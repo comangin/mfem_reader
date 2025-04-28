@@ -813,7 +813,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
       int id1, id2;
       id1 = vvert[0];
       id2 = vvert[1];
-      if (id1 > id2) { swap(id1,id2); }
+      if (id1 > id2) { swap(id1,id2); } // TODO : understand swap/inversion
 
       shared_edges[i] = new Segment(id1, id2, 1);
    }
@@ -840,7 +840,7 @@ ParGmshMesh::ParGmshMesh(MPI_Comm comm, std::string gmsh_file,
    }
    Finalize(refine, fix_orientation);
 
-   EnsureParNodes();   
+   //TODO : check if nodes is allocated and perhaps call  EnsureParNodes();   
 }
 
 #endif  // MFEM_USE_MPI

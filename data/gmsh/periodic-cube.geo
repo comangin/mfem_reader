@@ -5,7 +5,7 @@ tet_or_hex = 0;
 DefineConstant[
   partitioner = {0, Choices{0="None", 1="Metis", 2="SimplePartition"},
     Name "Parameters/0Mesh partitioner"}
-  N = {2, Min 1, Max 256, Step 1,
+  N = {4, Min 1, Max 256, Step 1,
     Name "Parameters/1Number of partitions"}
   topology = {1, Choices{0, 1},
     Name "Parameters/2Create partition topology (BRep)?"}

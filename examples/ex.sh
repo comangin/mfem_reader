@@ -10,10 +10,10 @@ MFEM_DIR=${SCRIPT_DIR}/..
  )
 (cd ${MFEM_DIR}/build/examples;
  make -j 12 ex8p;
- mpirun  -np 2 ./ex8p -no-vis -no-gp -m periodic-cube.msh >out_ex8a.no-gp
- mpirun  -np 2 ./ex8p -no-vis -gp -m    periodic-cube_    >out_ex8a.gp
- mpirun  -np 2 ./ex8p -no-vis -no-gp -m cube-periodic.msh >out_ex8b.no-gp
- mpirun  -np 2 ./ex8p -no-vis -gp -m    cube-periodic_    >out_ex8b.gp
+ mpirun  -np 4 ./ex8p -no-vis -no-gp -m periodic-cube.msh >out_ex8a.no-gp
+ mpirun  -np 4 ./ex8p -no-vis -gp -m    periodic-cube_    >out_ex8a.gp
+ mpirun  -np 4 ./ex8p -no-vis -no-gp -m cube-periodic.msh >out_ex8b.no-gp
+ mpirun  -np 4 ./ex8p -no-vis -gp -m    cube-periodic_    >out_ex8b.gp
  for i in out_ex8*; do grep Total $i> r_$i; done
  echo " "
  echo "Result of the diff 8a :"
@@ -23,10 +23,10 @@ MFEM_DIR=${SCRIPT_DIR}/..
  )
 (cd ${MFEM_DIR}/build/examples;
  make -j 12 ex4p;
- mpirun  -np 2 ./ex4p -no-vis -no-gp -m periodic-cube.msh >out_ex4a.no-gp
- mpirun  -np 2 ./ex4p -no-vis -gp -m    periodic-cube_    >out_ex4a.gp
- mpirun  -np 2 ./ex4p -no-vis -no-gp -m cube-periodic.msh >out_ex4b.no-gp
- mpirun  -np 2 ./ex4p -no-vis -gp -m    cube-periodic_    >out_ex4b.gp
+ mpirun  -np 4 ./ex4p -no-vis -no-gp -m periodic-cube.msh >out_ex4a.no-gp
+ mpirun  -np 4 ./ex4p -no-vis -gp -m    periodic-cube_    >out_ex4a.gp
+ mpirun  -np 4 ./ex4p -no-vis -no-gp -m cube-periodic.msh >out_ex4b.no-gp
+ mpirun  -np 4 ./ex4p -no-vis -gp -m    cube-periodic_    >out_ex4b.gp
  echo " "
  echo "Result of the diff 4a :"
  diff -s out_ex4a.gp out_ex4a.no-gp
