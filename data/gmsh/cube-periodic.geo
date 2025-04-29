@@ -114,19 +114,18 @@ Physical Volume("main", 1)  = {1, 2};
 //For vo In {1:2}
 //    Physical Volume(vo)  = {vo}; 
 //EndFor
-For su In {1:11}
-    Physical Surface(su)  = {su}; 
-EndFor
+//For su In {1:11}
+//    Physical Surface(su)  = {su}; 
+//EndFor
 
-For li In {1:20}
-    Physical Line(li)  = {li}; 
-EndFor
-For pt In {1:12}
-    Physical Point(pt)  = {pt}; 
-EndFor
+//For li In {1:20}
+//    Physical Line(li)  = {li}; 
+//EndFor
+//For pt In {1:12}
+//    Physical Point(pt)  = {pt}; 
+//EndFor
 
 Mesh 3;
-RefineMesh;
 
 If (partitioner > 0)
   // Should we create the boundary representation of the partition entities?

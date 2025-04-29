@@ -136,13 +136,13 @@ int main(int argc, char *argv[])
    int sdim = pmesh->SpaceDimension();
 
 
-//   {
-//      int par_ref_levels = 2;
-//      for (int l = 0; l < par_ref_levels; l++)
-//      {
-//         pmesh->UniformRefinement();
-//      }
-//   }
+   {
+      int par_ref_levels = 2;
+      for (int l = 0; l < par_ref_levels; l++)
+      {
+         pmesh->UniformRefinement();
+      }
+   }
 
    // 7. Define a parallel finite element space on the parallel mesh. Here we
    //    use the Raviart-Thomas finite elements of the specified order.
