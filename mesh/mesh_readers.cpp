@@ -32,8 +32,28 @@
 
 using namespace std;
 
+
 namespace mfem
 {
+
+   void Mesh::display_mesh() const
+{
+   std::cout << "Éléments du maillage et leurs sommets :" << std::endl;
+
+   for (int i = 0; i < elements.Size(); ++i)
+   {
+      Element *el = elements[i];
+      const int *v = el->GetVertices();
+      int nv = el->GetNVertices();
+
+      std::cout << "Élément " << i << " : sommets [ ";
+      for (int j = 0; j < nv; ++j)
+      {
+         std::cout << v[j] << " ";
+      }
+      std::cout << "]" << std::endl;
+   }
+}
 
    bool Mesh::remove_unused_vertices = true;
 

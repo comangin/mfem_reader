@@ -1,6 +1,4 @@
-#include <petsc.h>
 #include <sys/resource.h>
-
 #include <chrono>
 #include <cstdlib>
 #include <fstream>
@@ -15,48 +13,58 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-  PetscInitialize(&argc, &argv, nullptr, nullptr);
+    const char *mesh_file = nullptr;
+    const char *mesh_output_file = nullptr;
+    const char *vtk_output_file = nullptr;
+    bool debug_mode = false;
 
-  PetscBool flagM = PETSC_FALSE, flagO = PETSC_FALSE, flagF = PETSC_FALSE,
-            flagD = PETSC_FALSE;
-  char filename[256] = {0}, objectname[256] = {0}, outname[256] = {0};
-
-  PetscOptionsGetString(nullptr, nullptr, "-m", filename, sizeof(filename),
-                        &flagM);
-  PetscOptionsGetString(nullptr, nullptr, "-o", objectname, sizeof(objectname),
-                        &flagO);
-  PetscOptionsGetString(nullptr, nullptr, "-file", outname, sizeof(outname),
-                        &flagF);
-  PetscOptionsGetString(nullptr, nullptr, "-d", outname, sizeof(outname),
-                        &flagD);
-
-  Mesh mesh(filename);
-
-  if (flagM)
-  {
-    if (flagD)
+    OptionsParser args(argc, argv);
+    args.AddOption(&mesh_file, "-m", "--mesh",
+                   "Mesh file to use.");
+    args.AddOption(&mesh_output_file, "-mesh", "--mesh-output",
+                   "Output mesh file.");
+    args.AddOption(&vtk_output_file, "-vtk", "--vtk-output",
+                   "Output VTK file.");
+    args.AddOption(&debug_mode, "-dbg", "--debug", "-no-dbg", "--no-debug",
+                   "Enable or disable debug output.");
+    args.Parse();
+    if (!args.Good())
     {
-      // Debug Mode
-      for (int i = 0; i < mesh.GetNV(); i++)
-      {
-        const double *node = mesh.GetVertex(i);
-        cout << "Noeud " << i << " : (" << node[0] << ", " << node[1] << ", "
-             << node[2] << ")" << endl;
-      }
+        args.PrintUsage(cout);
+        return 1;
+    }
+    args.PrintOptions(cout);
 
-      for (int i = 0; i < mesh.GetNE(); i++)
-      {
-        Element *el = mesh.GetElement(i);
-        const int *vertices = el->GetVertices();
-        int num_vertices = el->GetNVertices();
+    if (!mesh_file)
+    {
+        cerr << "Erreur : Aucun fichier de maillage spécifié avec -m." << endl;
+        return 1;
+    }
 
-        cout << "Element " << i << " : Sommets = [ ";
-        for (int j = 0; j < num_vertices; j++)
+    Mesh mesh(mesh_file);
+
+    if (debug_mode)
+    {
+        for (int i = 0; i < mesh.GetNV(); i++)
         {
-          cout << vertices[j] << " ";
+            const double *node = mesh.GetVertex(i);
+            cout << "Noeud " << i << " : (" << node[0] << ", " << node[1] << ", "
+                 << node[2] << ")" << endl;
         }
-        cout << "]" << endl;
-      }
+
+        for (int i = 0; i < mesh.GetNE(); i++)
+        {
+            Element *el = mesh.GetElement(i);
+            const int *vertices = el->GetVertices();
+            int num_vertices = el->GetNVertices();
+
+            cout << "Element " << i << " : Sommets = [ ";
+            for (int j = 0; j < num_vertices; j++)
+            {
+                cout << vertices[j] << " ";
+            }
+            cout << "]" << endl;
+        }
     }
 
     mesh.PrintInfo();
@@ -64,14 +72,22 @@ int main(int argc, char *argv[])
     cout << "Nombre d'arêtes : " << mesh.GetNEdges() << endl;
     cout << "Nombre de faces : " << mesh.GetNFaces() << endl;
     cout << "Nombre d'éléments : " << mesh.GetNE() << endl;
-  }
 
-  if (flagF)
-  {
-    std::ofstream ofs(outname);
-    mesh.Print(ofs);
-  }
+    if (mesh_output_file)
+    {
+        ofstream mesh_out(mesh_output_file);
+        mesh.Print(mesh_out);
+        mesh_out.close();
+        cout << "Maillage exporté dans : " << mesh_output_file << endl;
+    }
 
-  PetscFinalize();
-  return 0;
+    if (vtk_output_file)
+    {
+        ofstream vtk_out(vtk_output_file);
+        mesh.PrintVTK(vtk_out);
+        vtk_out.close();
+        cout << "Maillage exporté au format VTK dans : " << vtk_output_file << endl;
+    }
+
+    return 0;
 }

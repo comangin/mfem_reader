@@ -16,6 +16,12 @@
 
 using namespace std;
 
+void swap(int tab[], int i, int j) {
+    int temp = tab[i];
+    tab[i] = tab[j];
+    tab[j] = temp;
+}
+
 namespace mfem
 {
   // Load an .h5 file with PETSc
@@ -33,14 +39,15 @@ namespace mfem
       return 0;
     }
 
-    char objectname[PETSC_MAX_PATH_LEN];
+    PetscInitialize(nullptr,nullptr, nullptr, nullptr);
+    string objectname = filename;
+    size_t pos = objectname.rfind(".h5");
+    objectname = objectname.substr(0, pos);
     PetscBool flg;
-    PetscOptionsGetString(nullptr, nullptr, "-o", objectname, sizeof(objectname), &flg);
-
-    // std::cout << "File name: " << filename << " and mesh name: " << objectname << std::endl;
-
-    PetscCall(DMPlexCreateFromFile(PETSC_COMM_WORLD, filename.c_str(), objectname, PETSC_TRUE, &dm));
-    PetscCall(PetscObjectSetName((PetscObject)dm, objectname));
+    cout << "DEBUG HERE" << endl;
+    cout << filename << endl; 
+    PetscCall(DMPlexCreateFromFile(PETSC_COMM_WORLD, filename.c_str(), objectname.c_str(), PETSC_TRUE, &dm));
+    PetscCall(PetscObjectSetName((PetscObject)dm, objectname.c_str()));
     PetscCall(DMSetOptionsPrefix(dm, "loaded_"));
     PetscCall(DMViewFromOptions(dm, NULL, "-dm_view"));
     PetscCall(PetscViewerHDF5Open(PETSC_COMM_WORLD, filename.c_str(), FILE_MODE_READ, &viewer));
@@ -56,49 +63,8 @@ namespace mfem
 
     ReadDmplex(curved, read_gf);
     FinalizeTopology();
+    CheckElementOrientation(true);
     Finalize();
-
-    // if (curved && read_gf)
-    // {
-    //    Nodes = new GridFunction(this, input);
-
-    //    own_nodes = 1;
-    //    spaceDim = Nodes->VectorDim();
-    //    if (ncmesh) { ncmesh->spaceDim = spaceDim; }
-
-    //    // Set vertex coordinates from the 'Nodes'
-    //    SetVerticesFromNodes(Nodes);
-    // }
-
-    // // If a parse tag was supplied, keep reading the stream until the tag is
-    // // encountered.
-    // if (mfem_version >= 12)
-    // {
-    //    string line;
-    //    do
-    //    {
-    //       skip_comment_lines(input, '#');
-    //       MFEM_VERIFY(input.good(), "Required mesh-end tag not found");
-    //       getline(input, line);
-    //       filter_dos(line);
-    //       // mfem v1.2 may not have parse_tag in it, e.g. if trying to read a
-    //       // serial mfem v1.2 mesh as parallel with "mfem_serial_mesh_end" as
-    //       // parse_tag. That's why, regardless of parse_tag, we stop reading if
-    //       // we find "mfem_mesh_end" which is required by mfem v1.2 format.
-    //       if (line == "mfem_mesh_end") { break; }
-    //    }
-    //    while (line != parse_tag);
-    // }
-    // else if (mfem_nc_version >= 10)
-    // {
-    //    string ident;
-    //    skip_comment_lines(input, '#');
-    //    input >> ident;
-    //    MFEM_VERIFY(ident == "mfem_mesh_end",
-    //                "invalid mesh: end of file tag not found");
-    // }
-
-    // // Finalize(...) should be called after this, if needed.
     return 0;
   }
 
@@ -112,8 +78,7 @@ namespace mfem
   {
     std ::string tag_parse = "";
     LoaderHDF5(generate_edges, tag_parse);
-    // Finalize(refine, fix_orientation);
-
+    Finalize(refine, fix_orientation);
     return 0;
   }
 
@@ -206,20 +171,15 @@ namespace mfem
 
       // TYPE ELEMENT //
       DMPlexGetCellType(dm, i, &celltype);
+      int tag; 
       switch (celltype)
       {
       case 0:
         elements[i] = new Point(&vertex_tetra[0], groupID);
         break;
-
       case 1:
         elements[i] = new Segment(&vertex_tetra[0], groupID);
         break;
-
-      case 2:
-        // TODO: Handle POINT_PRISM
-        break;
-
       case 3:
         elements[i] = new Triangle(&vertex_tetra[0], groupID);
         break;
@@ -229,22 +189,21 @@ namespace mfem
         break;
 
       case 5:
-        // TODO: Handle SEG_PRIM
+                 // TODO: Handle SEG_PRIM
         break;
 
       case 6:
+        swap(vertex_tetra,0,1); // Inversion par PETsc 
         elements[i] = new Tetrahedron(&vertex_tetra[0], groupID);
         break;
 
       case 7:
-        int tag;
-        tag=vertex_tetra[3];
-        vertex_tetra[3]=vertex_tetra[1];
-        vertex_tetra[1]=tag;
+        swap(vertex_tetra,1,3); // Inversion par PETsc 
         elements[i] = new Hexahedron(&vertex_tetra[0], groupID);
         break;
 
       case 8:
+        swap(vertex_tetra,1,2); // Inversion par PETsc 
         elements[i] = new Wedge(&vertex_tetra[0], groupID);
         break;
 
@@ -257,6 +216,7 @@ namespace mfem
         break;
 
       case 11:
+        swap(vertex_tetra,1,3); // Inversion par PETsc 
         elements[i] = new Pyramid(&vertex_tetra[0], groupID);
         break;
 

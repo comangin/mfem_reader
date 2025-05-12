@@ -4333,6 +4333,7 @@ Mesh::Mesh(const std::string &filename, int generate_edges, int refine,
   }
   else {
     LoadDmplex(generate_edges, refine, fix_orientation);
+    PetscFinalize();
   }
   
 }
@@ -4717,6 +4718,7 @@ void Mesh::Loader(std::istream &input, int generate_edges,
       FinalizeTopology(generate_bdr);
    }
 
+
    if (curved && read_gf)
    {
       Nodes = new GridFunction(this, input);
@@ -4728,7 +4730,7 @@ void Mesh::Loader(std::istream &input, int generate_edges,
       // Set vertex coordinates from the 'Nodes'
       SetVerticesFromNodes(Nodes);
    }
-
+    
    // If a parse tag was supplied, keep reading the stream until the tag is
    // encountered.
    if (mfem_version >= 12)
@@ -4758,6 +4760,8 @@ void Mesh::Loader(std::istream &input, int generate_edges,
    }
 
    // Finalize(...) should be called after this, if needed.
+     
+
 }
 
 Mesh::Mesh(Mesh *mesh_array[], int num_pieces)

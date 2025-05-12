@@ -335,6 +335,7 @@ protected:
    void ReadNetgen2DMesh(std::istream &input, int &curved);
    void ReadNetgen3DMesh(std::istream &input);
    void ReadTrueGridMesh(std::istream &input);
+   void display_mesh() const;
    void CreateVTKMesh(const Vector &points, const Array<int> &cell_data,
                       const Array<int> &cell_offsets,
                       const Array<int> &cell_types,
