@@ -56,6 +56,36 @@ void F_exact(const Vector &, Vector &);
 void f_exact(const Vector &, Vector &);
 real_t freq = 1.0, kappa;
 
+
+void display_mesh(const mfem::Mesh *mesh)
+{
+    printf("Nœuds du maillage :\n");
+
+    for (int i = 0; i < mesh->GetNV(); ++i)
+    {
+        const double *node = mesh->GetVertex(i);
+        printf("Nœud %d : (%.6f, %.6f, %.6f)\n", i, node[0], node[1], node[2]);
+    }
+
+    printf("\nÉléments du maillage et leurs sommets :\n");
+
+    for (int i = 0; i < mesh->GetNE(); ++i)
+    {
+        const mfem::Element *el = mesh->GetElement(i);
+        const int *v = el->GetVertices();
+        int nv = el->GetNVertices();
+
+        printf("Élément %d : Sommets = [", i);
+        for (int j = 0; j < nv; ++j)
+        {
+            printf(" %d", v[j]);
+        }
+        printf(" ]\n");
+    }
+}
+
+
+
 int main(int argc, char *argv[])
 {
    // 1. Parse command-line options.
@@ -76,7 +106,7 @@ int main(int argc, char *argv[])
    args.AddOption(&set_bc, "-bc", "--impose-bc", "-no-bc", "--dont-impose-bc",
                   "Impose or not essential boundary conditions.");
    args.AddOption(&freq, "-f", "--frequency", "Set the frequency for the exact"
-                  " solution.");
+                                              " solution.");
    args.AddOption(&static_cond, "-sc", "--static-condensation", "-no-sc",
                   "--no-static-condensation", "Enable static condensation.");
    args.AddOption(&hybridization, "-hb", "--hybridization", "-no-hb",
@@ -109,13 +139,16 @@ int main(int argc, char *argv[])
    int dim = mesh->Dimension();
    int sdim = mesh->SpaceDimension();
 
+   mesh->PrintInfo();      
+   display_mesh(mesh);
+
    // 4. Refine the mesh to increase the resolution. In this example we do
    //    'ref_levels' of uniform refinement. We choose 'ref_levels' to be the
    //    largest number that gives a final mesh with no more than 25,000
    //    elements.
    {
       int ref_levels =
-         (int)floor(log(25000./mesh->GetNE())/log(2.)/dim);
+          (int)floor(log(25000. / mesh->GetNE()) / log(2.) / dim);
       for (int l = 0; l < ref_levels; l++)
       {
          mesh->UniformRefinement();
@@ -124,7 +157,7 @@ int main(int argc, char *argv[])
 
    // 5. Define a finite element space on the mesh. Here we use the
    //    Raviart-Thomas finite elements of the specified order.
-   FiniteElementCollection *fec = new RT_FECollection(order-1, dim);
+   FiniteElementCollection *fec = new RT_FECollection(order - 1, dim);
    FiniteElementSpace *fespace = new FiniteElementSpace(mesh, fec);
    cout << "Number of finite element unknowns: "
         << fespace->GetTrueVSize() << endl;
@@ -163,9 +196,12 @@ int main(int argc, char *argv[])
    //    grad alpha div + beta I, by adding the div-div and the mass domain
    //    integrators.
    Coefficient *alpha = new ConstantCoefficient(1.0);
-   Coefficient *beta  = new ConstantCoefficient(1.0);
+   Coefficient *beta = new ConstantCoefficient(1.0);
    BilinearForm *a = new BilinearForm(fespace);
-   if (pa) { a->SetAssemblyLevel(AssemblyLevel::PARTIAL); }
+   if (pa)
+   {
+      a->SetAssemblyLevel(AssemblyLevel::PARTIAL);
+   }
    a->AddDomainIntegrator(new DivDivIntegrator(*alpha));
    a->AddDomainIntegrator(new VectorFEMassIntegrator(*beta));
 
@@ -181,7 +217,7 @@ int main(int argc, char *argv[])
    }
    else if (hybridization)
    {
-      hfec = new DG_Interface_FECollection(order-1, dim);
+      hfec = new DG_Interface_FECollection(order - 1, dim);
       hfes = new FiniteElementSpace(mesh, hfec);
       a->EnableHybridization(hfes, new NormalTraceJumpIntegrator(),
                              ess_tdof_list);
@@ -199,7 +235,7 @@ int main(int argc, char *argv[])
    {
 #ifndef MFEM_USE_SUITESPARSE
       // Use a simple symmetric Gauss-Seidel preconditioner with PCG.
-      GSSmoother M((SparseMatrix&)(*A));
+      GSSmoother M((SparseMatrix &)(*A));
       PCG(*A, M, B, X, 1, 10000, 1e-20, 0.0);
 #else
       // If MFEM was compiled with SuiteSparse, use UMFPACK to solve the system.
@@ -226,7 +262,8 @@ int main(int argc, char *argv[])
    a->RecoverFEMSolution(X, *b, x);
 
    // 13. Compute and print the L^2 norm of the error.
-   cout << "\n|| F_h - F ||_{L^2} = " << x.ComputeL2Error(F) << '\n' << endl;
+   cout << "\n|| F_h - F ||_{L^2} = " << x.ComputeL2Error(F) << '\n'
+        << endl;
 
    // 14. Save the refined mesh and the solution. This output can be viewed
    //     later using GLVis: "glvis -m refined.mesh -g sol.gf".
@@ -243,10 +280,11 @@ int main(int argc, char *argv[])
    if (visualization)
    {
       char vishost[] = "localhost";
-      int  visport   = 19916;
+      int visport = 19916;
       socketstream sol_sock(vishost, visport);
       sol_sock.precision(8);
-      sol_sock << "solution\n" << *mesh << x << flush;
+      sol_sock << "solution\n"
+               << *mesh << x << flush;
    }
 
    // 16. Free the used memory.
@@ -263,7 +301,6 @@ int main(int argc, char *argv[])
    return 0;
 }
 
-
 // The exact solution (for non-surface meshes)
 void F_exact(const Vector &p, Vector &F)
 {
@@ -273,8 +310,8 @@ void F_exact(const Vector &p, Vector &F)
    real_t y = p(1);
    // real_t z = (dim == 3) ? p(2) : 0.0; // Uncomment if F is changed to depend on z
 
-   F(0) = cos(kappa*x)*sin(kappa*y);
-   F(1) = cos(kappa*y)*sin(kappa*x);
+   F(0) = cos(kappa * x) * sin(kappa * y);
+   F(1) = cos(kappa * y) * sin(kappa * x);
    if (dim == 3)
    {
       F(2) = 0.0;
@@ -290,10 +327,10 @@ void f_exact(const Vector &p, Vector &f)
    real_t y = p(1);
    // real_t z = (dim == 3) ? p(2) : 0.0; // Uncomment if f is changed to depend on z
 
-   real_t temp = 1 + 2*kappa*kappa;
+   real_t temp = 1 + 2 * kappa * kappa;
 
-   f(0) = temp*cos(kappa*x)*sin(kappa*y);
-   f(1) = temp*cos(kappa*y)*sin(kappa*x);
+   f(0) = temp * cos(kappa * x) * sin(kappa * y);
+   f(1) = temp * cos(kappa * y) * sin(kappa * x);
    if (dim == 3)
    {
       f(2) = 0;

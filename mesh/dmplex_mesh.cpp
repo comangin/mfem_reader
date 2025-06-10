@@ -44,8 +44,6 @@ namespace mfem
     size_t pos = objectname.rfind(".h5");
     objectname = objectname.substr(0, pos);
     PetscBool flg;
-    cout << "DEBUG HERE" << endl;
-    cout << filename << endl; 
     PetscCall(DMPlexCreateFromFile(PETSC_COMM_WORLD, filename.c_str(), objectname.c_str(), PETSC_TRUE, &dm));
     PetscCall(PetscObjectSetName((PetscObject)dm, objectname.c_str()));
     PetscCall(DMSetOptionsPrefix(dm, "loaded_"));
@@ -63,8 +61,6 @@ namespace mfem
 
     ReadDmplex(curved, read_gf);
     FinalizeTopology();
-    CheckElementOrientation(true);
-    Finalize();
     return 0;
   }
 
@@ -79,6 +75,8 @@ namespace mfem
     std ::string tag_parse = "";
     LoaderHDF5(generate_edges, tag_parse);
     Finalize(refine, fix_orientation);
+
+    CheckElementOrientation(true);
     return 0;
   }
 
@@ -243,7 +241,11 @@ namespace mfem
       DMPlexRestoreTransitiveClosure(dm, i, PETSC_TRUE, &closureSize, (PetscInt **)&closure);
       CHKERRQ(ierr);
     }
+    this->RemoveUnusedVertices();
+    this->RemoveInternalBoundaries();
+    display_mesh();
     return 0;
+
   }
 
 }

@@ -36,24 +36,60 @@ using namespace std;
 namespace mfem
 {
 
-   void Mesh::display_mesh() const
+void Mesh::display_mesh() const
 {
-   std::cout << "Éléments du maillage et leurs sommets :" << std::endl;
+   // 1. Afficher les coordonnées des noeuds (vertices)
+   printf("Coordonnées des noeuds (vertices) :\n");
+   for (int i = 0; i < vertices.Size(); ++i)
+   {
+      printf("Noeud %d : (", i);
+      for (int d = 0; d < spaceDim; ++d)
+      {
+         printf("%f", vertices[i](d));
+         if (d < spaceDim - 1) printf(", ");
+      }
+      printf(")\n");
+   }
 
+   // 2. Afficher les éléments avec leurs sommets
+   printf("\nÉléments du maillage et leurs sommets :\n");
    for (int i = 0; i < elements.Size(); ++i)
    {
       Element *el = elements[i];
       const int *v = el->GetVertices();
       int nv = el->GetNVertices();
 
-      std::cout << "Élément " << i << " : sommets [ ";
+      printf("Élément %d : sommets [ ", i);
       for (int j = 0; j < nv; ++j)
       {
-         std::cout << v[j] << " ";
+         printf("%d ", v[j]);
       }
-      std::cout << "]" << std::endl;
+      printf("]\n");
+   }
+
+   // 3. Si Nodes existe, afficher son contenu
+   if (Nodes != nullptr)
+   {
+      printf("\nContenu de Nodes (GridFunction) :\n");
+
+      int ndofs = Nodes->Size(); // nombre total de valeurs stockées
+      int dim = Nodes->VectorDim(); // dimension spatiale (2 ou 3)
+
+      for (int i = 0; i < ndofs / dim; ++i)
+      {
+         printf("Noeud courbe %d : (", i);
+         for (int d = 0; d < dim; ++d)
+         {
+            printf("%f", (*Nodes)(i * dim + d));
+            if (d < dim - 1) printf(", ");
+         }
+         printf(")\n");
+      }
    }
 }
+
+
+
 
    bool Mesh::remove_unused_vertices = true;
 
@@ -144,7 +180,6 @@ namespace mfem
          input >> ws;
          curved = 1;
       }
-
       // When visualizing solutions on non-conforming grids, PETSc
       // may dump additional vertices
       if (remove_unused_vertices)

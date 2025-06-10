@@ -19,37 +19,35 @@ int main(int argc, char *argv[])
     bool debug_mode = false;
 
     OptionsParser args(argc, argv);
-    args.AddOption(&mesh_file, "-m", "--mesh",
-                   "Mesh file to use.");
-    args.AddOption(&mesh_output_file, "-mesh", "--mesh-output",
-                   "Output mesh file.");
-    args.AddOption(&vtk_output_file, "-vtk", "--vtk-output",
-                   "Output VTK file.");
-    args.AddOption(&debug_mode, "-dbg", "--debug", "-no-dbg", "--no-debug",
-                   "Enable or disable debug output.");
+    args.AddOption(&mesh_file, "-m", "--mesh", "Mesh file to use.");
+    args.AddOption(&mesh_output_file, "-mesh", "--mesh-output", "Output mesh file.");
+    args.AddOption(&vtk_output_file, "-vtk", "--vtk-output", "Output VTK file.");
+    args.AddOption(&debug_mode, "-dbg", "--debug", "-no-dbg", "--no-debug", "Enable or disable debug output.");
     args.Parse();
+
     if (!args.Good())
     {
-        args.PrintUsage(cout);
+        args.PrintUsage(std::cout);
         return 1;
     }
-    args.PrintOptions(cout);
+
+    args.PrintOptions(std::cout);
 
     if (!mesh_file)
     {
-        cerr << "Erreur : Aucun fichier de maillage spécifié avec -m." << endl;
+        fprintf(stderr, "Erreur : Aucun fichier de maillage spécifié avec -m.\n");
         return 1;
     }
 
-    Mesh mesh(mesh_file);
-
+    Mesh mesh(mesh_file,1,1);
+    mesh.PrintInfo();
     if (debug_mode)
     {
+        printf("DEBUG MODE ACTIVE \n");
         for (int i = 0; i < mesh.GetNV(); i++)
         {
             const double *node = mesh.GetVertex(i);
-            cout << "Noeud " << i << " : (" << node[0] << ", " << node[1] << ", "
-                 << node[2] << ")" << endl;
+            printf("Noeud %d : (%.6f, %.6f, %.6f)\n", i, node[0], node[1], node[2]);
         }
 
         for (int i = 0; i < mesh.GetNE(); i++)
@@ -58,27 +56,27 @@ int main(int argc, char *argv[])
             const int *vertices = el->GetVertices();
             int num_vertices = el->GetNVertices();
 
-            cout << "Element " << i << " : Sommets = [ ";
+            printf("Élément %d : Sommets = [", i);
             for (int j = 0; j < num_vertices; j++)
             {
-                cout << vertices[j] << " ";
+                printf(" %d", vertices[j]);
             }
-            cout << "]" << endl;
+            printf(" ]\n");
         }
     }
 
-    mesh.PrintInfo();
-    cout << "Nombre de sommets : " << mesh.GetNV() << endl;
-    cout << "Nombre d'arêtes : " << mesh.GetNEdges() << endl;
-    cout << "Nombre de faces : " << mesh.GetNFaces() << endl;
-    cout << "Nombre d'éléments : " << mesh.GetNE() << endl;
+    
+    printf("Nombre de sommets : %d\n", mesh.GetNV());
+    printf("Nombre d'arêtes : %d\n", mesh.GetNEdges());
+    printf("Nombre de faces : %d\n", mesh.GetNFaces());
+    printf("Nombre d'éléments : %d\n", mesh.GetNE());
 
     if (mesh_output_file)
     {
         ofstream mesh_out(mesh_output_file);
         mesh.Print(mesh_out);
         mesh_out.close();
-        cout << "Maillage exporté dans : " << mesh_output_file << endl;
+        printf("Maillage exporté dans : %s\n", mesh_output_file);
     }
 
     if (vtk_output_file)
@@ -86,8 +84,7 @@ int main(int argc, char *argv[])
         ofstream vtk_out(vtk_output_file);
         mesh.PrintVTK(vtk_out);
         vtk_out.close();
-        cout << "Maillage exporté au format VTK dans : " << vtk_output_file << endl;
+        printf("Maillage exporté au format VTK dans : %s\n", vtk_output_file);
     }
-
     return 0;
 }
