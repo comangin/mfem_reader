@@ -120,8 +120,8 @@ echo -e "\n\033[1mRunning tests on gmsh tutorials meshes...\033[0m"
 for i in $GMSH_TUT_MESH_LIST; do
     for ex in ${EXAMPLES_LIST}; do
         echo -e "- ${ex}, t${i}"
-        (./${ex} -m "${GMSH_TUTO_DIR}/t${i}_22.msh" | grep -v -e "mesh" -e "Iteration" -e "Average reduction") > res22 2>err22
-        (./${ex} -m "${GMSH_TUTO_DIR}/t${i}_41.msh" | grep -v -e "mesh" -e "Iteration" -e "Average reduction") > res41 2>err41
+        (./${ex} -m "${MFEM_BUILD_DATA}/t${i}_22.msh" | grep -v -e "mesh" -e "Iteration" -e "Average reduction") > res22 2>err22
+        (./${ex} -m "${MFEM_BUILD_DATA}/t${i}_41.msh" | grep -v -e "mesh" -e "Iteration" -e "Average reduction") > res41 2>err41
         [[ -s res22 || -s res41 ]] && diffColorIndented res22 res41
         if grep -q "No convergence" res*; then
             echo -e "\033[1m\tConvergence was not reached!\033[0m"
