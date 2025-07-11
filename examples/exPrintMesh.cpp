@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
 
    // 1. Read the mesh from the given mesh file, and print info.
    Mesh mesh(mesh_file);
+   mesh.RemoveInternalBoundaries();
    mesh.PrintInfo();
 
    // 2. Dump the mesh.

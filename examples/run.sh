@@ -21,11 +21,6 @@ printHelp () {
 	echo "                      -h: Print this help"
 }
 
-if [[ $# -eq 0 ]] ; then
-    printHelp
-    exit 0
-fi
-
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -87,7 +82,7 @@ MFEM_BUILD_DATA="${MFEM_BUILD_DIR}/data"
 
 echo -e "\033[1mGenerating meshes\033[0m in ${MFEM_BUILD_DATA}..."
 cd ${MFEM_DATA}
-MFEM_GEO_FILES=($(ls *.geo))
+MFEM_GEO_FILES=($(ls *.geo | grep -v compass))
 MFEM_MESH_NAMES=()
 cd $MFEM_BUILD_DATA;
 for i in ${MFEM_GEO_FILES[@]}; do
@@ -97,10 +92,14 @@ for i in ${MFEM_GEO_FILES[@]}; do
     gmsh -v 2 ${MFEM_DATA}/${i} -3 -format msh22 -o ${MFEM_MESH_NAMES[-1]}_22.msh &
     wait
 done
-
+# Also generating compass mesh, but to later use it with ex39 only
+echo -e "\tcompass.geo"
+gmsh -v 2 ${MFEM_DATA}/compass.geo -2 -format msh41 -o compass_41.msh &
+gmsh -v 2 ${MFEM_DATA}/compass.geo -2 -format msh22 -o compass_22.msh &
+wait
 
 GMSH_TUTO_DIR=${GMSH_DIR}/tutorials
-GMSH_TUT_MESH_LIST="1 3 4 5 6 7 8 10 11 13 14 15 16 17 18 19 20"
+GMSH_TUT_MESH_LIST="1 3 4 5 6 7 8 10 11 13 14 15 16 18 19 20"
 
 for i in $GMSH_TUT_MESH_LIST; do
     echo -e "\tt${i}.geo"
@@ -110,9 +109,8 @@ for i in $GMSH_TUT_MESH_LIST; do
 done
 
 echo -e "\033[1m\nBuilding examples...\033[0m"
-EXAMPLES_LIST="exPrintMesh ex0 ex1 ex4 ex39"
-(cd $MFEM_BUILD_DIR; make --quiet -j 12 ${EXAMPLES_LIST})
-
+EXAMPLES_LIST="exPrintMesh ex0 ex1 ex4"
+(cd $MFEM_BUILD_DIR; make --quiet -j 12 ${EXAMPLES_LIST}; make --quiet -j 12 ex39)
 
 # Multipe checks
 cd $MFEM_BUILD_DIR/examples
@@ -145,6 +143,17 @@ for i in ${MFEM_MESH_NAMES[@]}; do
         rm -f res22 res41 err22 err41
     done
 done
+
+# running ex39 on compass mesh
+echo -e "- ex39, compass"
+(./ex39 -m ${MFEM_BUILD_DATA}/compass_22.msh | grep -v -e "mesh" -e "Iteration" -e "Average reduction") > res22 2>err22
+(./ex39 -m ${MFEM_BUILD_DATA}/compass_41.msh | grep -v -e "mesh" -e "Iteration" -e "Average reduction") > res41 2>err41
+[[ -s res22 || -s res41 ]] && diffColorIndented res22 res41
+if grep -q "No convergence" res*; then
+    echo -e "\033[1m\tConvergence was not reached!\033[0m"
+fi
+[[ -s err22 || -s err41 ]] && echo -e "\033[1m\tErrors have occurred!\033[0m" && diffColorIndented err22 err41
+rm -f res22 res41 err22 err41
 
 if [[ ! -z ${MFEM_DATA_GMSH_DIR} ]]; then
     GMSH_MESHES_IN_MFEM_LARGE_DATA="homology piece surfaces_in_3d"

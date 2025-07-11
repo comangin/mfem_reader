@@ -7131,7 +7131,7 @@ int Mesh::CheckBdrElementOrientation(bool fix_it)
       for (int i = 0; i < NumOfBdrElements; i++)
       {
          const int btf = be_to_face[i];
-         //MFEM_VERIFY(btf > 0,"INTERNAL ERROR GetElementToEdgeTable");
+         MFEM_VERIFY(btf >= 0,"INTERNAL ERROR GetElementToEdgeTable");
          if (faces_info[btf].Elem2No < 0) // boundary face
          {
             int *bv = boundary[i]->GetVertices();
