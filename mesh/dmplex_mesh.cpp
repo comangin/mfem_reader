@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <map>
+#include <utility>
 
 #include "petscdm.h"
 #include "petscdmlabel.h"
@@ -14,8 +15,6 @@
 #include "mesh_headers.hpp"
 #include "../fem/fem.hpp"
 
-using namespace std;
-
 void swap(int tab[], int i, int j) {
     int temp = tab[i];
     tab[i] = tab[j];
@@ -25,37 +24,35 @@ void swap(int tab[], int i, int j) {
 namespace mfem
 {
   // Load an .h5 file with PETSc
-  PetscErrorCode Mesh::LoadMeshHDF5fromfile(const std::string &filename, bool &is_dmplex)
-  {
+  PetscErrorCode Mesh::LoadMeshHDF5fromfile(const std::string &filename, bool &is_dmplex) {
     PetscErrorCode ierr;
     PetscViewer viewer;
 
     struct _n_DMPlexStorageVersion version = {3, 0, 0};
 
-    if (filename.length() < 3 || filename.substr(filename.size() - 3) != ".h5")
-    {
-      // std::cerr << "The file '" << filename << "' is not a DMplex" << std::endl;
+    if (filename.length() < 3 || filename.substr(filename.size() - 3) != ".h5") {
       is_dmplex = false;
       return 0;
     }
 
-    PetscInitialize(nullptr,nullptr, nullptr, nullptr);
-    string objectname = filename;
-    size_t pos = objectname.rfind(".h5");
-    objectname = objectname.substr(0, pos);
+    PetscInitialize(nullptr, nullptr, nullptr, nullptr);
+    std::string objectname = filename;
+    size_t pos1 = objectname.find_last_of("/");
+    size_t pos2 = objectname.rfind(".h5");
+    objectname = objectname.substr(pos1+1, pos2-pos1-1);
     PetscBool flg;
-    PetscCall(DMPlexCreateFromFile(PETSC_COMM_WORLD, filename.c_str(), objectname.c_str(), PETSC_TRUE, &dm));
+    PetscCall(DMPlexCreateFromFile(PETSC_COMM_WORLD, filename.c_str(),
+              objectname.c_str(), PETSC_TRUE, &dm));
     PetscCall(PetscObjectSetName((PetscObject)dm, objectname.c_str()));
-    PetscCall(DMSetOptionsPrefix(dm, "loaded_"));
-    PetscCall(DMViewFromOptions(dm, NULL, "-dm_view"));
-    PetscCall(PetscViewerHDF5Open(PETSC_COMM_WORLD, filename.c_str(), FILE_MODE_READ, &viewer));
+    // PetscCall(DMView(dm, PETSC_VIEWER_STDOUT_WORLD));
+    PetscCall(PetscViewerHDF5Open(PETSC_COMM_WORLD, filename.c_str(),
+              FILE_MODE_READ, &viewer));
     PetscCall(PetscViewerHDF5SetDMPlexStorageVersionReading(viewer, &version));
     is_dmplex = true;
     return ierr;
   }
 
-  PetscErrorCode Mesh::LoaderHDF5(int generate_edges, const std::string &parse_tag)
-  {
+  PetscErrorCode Mesh::LoaderHDF5(int generate_edges, const std::string &parse_tag) {
     int curved = 0, read_gf = 1;
     bool finalize_topo = true;
 
@@ -64,14 +61,12 @@ namespace mfem
     return 0;
   }
 
-  PetscErrorCode FinalizeHDF5(bool refine, bool fix_orientation)
-  {
+  PetscErrorCode FinalizeHDF5(bool refine, bool fix_orientation) {
     // Implementation of FinalizeHDF5
     return 0;
   }
 
-  PetscErrorCode Mesh::LoadDmplex(int generate_edges, int refine, bool fix_orientation = true)
-  {
+  PetscErrorCode Mesh::LoadDmplex(int generate_edges, int refine, bool fix_orientation = true) {
     std ::string tag_parse = "";
     LoaderHDF5(generate_edges, tag_parse);
     Finalize(refine, fix_orientation);
@@ -80,40 +75,37 @@ namespace mfem
     return 0;
   }
 
-  PetscErrorCode Mesh::ReadDmplex(int curved, int read_gf)
-  {
+  PetscErrorCode Mesh::ReadDmplex(int curved, int read_gf) {
     Vec coordinates;
     PetscErrorCode ierr;
     IS globalVertexNumbers = NULL;
     PetscInt dim, coordDim, nValues, numCellsStart, numCellsEnd;
     PetscReal *coords;
-    PetscInt *cones, numElements, dm_dim;
+    PetscInt *cones, numElements, dm_dim, sp_dim;
     PetscMPIInt rank;
 
-    map<int, int> vertices_map;
+    std::map<int, int> vertices_map;
 
     PetscCall(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
-    coordDim = 3;
 
     // VERTICES //
     PetscCall(DMGetCoordinates(dm, &coordinates));
     PetscCall(DMGetDimension(dm, &dm_dim));
-    spaceDim = dm_dim; // Need modification here
+    PetscCall(DMGetCoordinateDim(dm, &sp_dim));
+    spaceDim = sp_dim;
     Dim = dm_dim;
     PetscCall(VecGetLocalSize(coordinates, &nValues));
     PetscCall(VecGetArray(coordinates, &coords));
-    NumOfVertices = nValues / coordDim;
+    NumOfVertices = nValues / spaceDim;
     vertices.SetSize(NumOfVertices);
     PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
     real_t coordLocal[3];
 
-    for (PetscInt i = 0; i < NumOfVertices; ++i)
-    {
-      for (int d = 0; d < coordDim; ++d)
-      {
-        coordLocal[d] = coords[i * coordDim + d];
+    for (PetscInt i = 0; i < NumOfVertices; ++i) {
+      for (int d = 0; d < spaceDim; ++d) {
+        coordLocal[d] = coords[i * spaceDim + d];
       }
-      vertices[i] = Vertex(coordLocal, coordDim);
+      vertices[i] = Vertex(coordLocal, spaceDim);
       PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
     }
 
@@ -125,32 +117,27 @@ namespace mfem
     NumOfElements = numCellsEnd - numCellsStart;
     elements.SetSize(NumOfElements);
 
-    for (PetscInt i = numCellsStart; i < numCellsEnd; ++i)
-    {
-      const PetscInt *closure = NULL;
+    for (PetscInt i = numCellsStart; i < numCellsEnd; ++i) {
+      PetscInt *closure = NULL;
       PetscInt closureSize;
 
-      DMPlexGetTransitiveClosure(dm, i, PETSC_TRUE, &closureSize, (PetscInt **)&closure);
-      CHKERRQ(ierr);
+      PetscCall(DMPlexGetTransitiveClosure(dm, i, PETSC_TRUE,
+                &closureSize, reinterpret_cast<PetscInt **>(&closure)));
       PetscInt vertex_tetra[closureSize];
       PetscInt Nv = 0;
       PetscInt vStart, vEnd;
 
-      ierr = DMPlexGetDepthStratum(dm, 0, &vStart, &vEnd);
-      CHKERRQ(ierr);
+      PetscCall(DMPlexGetDepthStratum(dm, 0, &vStart, &vEnd));
 
-      for (PetscInt cl = 0; cl < closureSize * 2; cl += 2)
-      {
+      for (PetscInt cl = 0; cl < closureSize * 2; cl += 2) {
         PetscInt vertex = closure[cl];
 
-        if (vertex >= vStart && vertex < vEnd)
-        {
+        if (vertex >= vStart && vertex < vEnd) {
           vertex_tetra[Nv++] = vertex;
         }
       }
 
-      for (PetscInt j = 0; j < Nv; ++j)
-      {
+      for (PetscInt j = 0; j < Nv; ++j) {
         vertex_tetra[j] = vertex_tetra[j] - numCellsEnd;
       }
 
@@ -159,8 +146,7 @@ namespace mfem
       PetscInt groupID;
       DMHasLabel(dm, "Cell Sets", &hasLabel);
 
-      if (hasLabel)
-      {
+      if (hasLabel) {
         DMGetLabelValue(dm, "Cell Sets", i, &groupID);
       }
 
@@ -169,9 +155,8 @@ namespace mfem
 
       // TYPE ELEMENT //
       DMPlexGetCellType(dm, i, &celltype);
-      int tag; 
-      switch (celltype)
-      {
+      int tag;
+      switch (celltype) {
       case 0:
         elements[i] = new Point(&vertex_tetra[0], groupID);
         break;
@@ -187,21 +172,21 @@ namespace mfem
         break;
 
       case 5:
-                 // TODO: Handle SEG_PRIM
+        // TODO: Handle SEG_PRIM
         break;
 
       case 6:
-        swap(vertex_tetra,0,1); // Inversion par PETsc 
+        swap(vertex_tetra, 0, 1);  // Inversion par PETsc
         elements[i] = new Tetrahedron(&vertex_tetra[0], groupID);
         break;
 
       case 7:
-        swap(vertex_tetra,1,3); // Inversion par PETsc 
+        swap(vertex_tetra, 1, 3);  // Inversion par PETsc
         elements[i] = new Hexahedron(&vertex_tetra[0], groupID);
         break;
 
       case 8:
-        swap(vertex_tetra,1,2); // Inversion par PETsc 
+        swap(vertex_tetra, 1, 2);  // Inversion par PETsc
         elements[i] = new Wedge(&vertex_tetra[0], groupID);
         break;
 
@@ -214,7 +199,7 @@ namespace mfem
         break;
 
       case 11:
-        swap(vertex_tetra,1,3); // Inversion par PETsc 
+        swap(vertex_tetra, 1, 3);  // Inversion par PETsc
         elements[i] = new Pyramid(&vertex_tetra[0], groupID);
         break;
 
@@ -230,7 +215,7 @@ namespace mfem
       case 15:
       case 16:
       case 17:
-        std::cerr << "Unknown or unsupported cell type: " << celltype << std::endl;
+        std::cerr << "Unknown/unsupported cell type: " << celltype << std::endl;
         break;
 
       default:
@@ -238,14 +223,13 @@ namespace mfem
         break;
       }
 
-      DMPlexRestoreTransitiveClosure(dm, i, PETSC_TRUE, &closureSize, (PetscInt **)&closure);
-      CHKERRQ(ierr);
+      PetscCall(DMPlexRestoreTransitiveClosure(dm, i, PETSC_TRUE,
+                &closureSize, reinterpret_cast<PetscInt **>(&closure)));
     }
     this->RemoveUnusedVertices();
     this->RemoveInternalBoundaries();
     display_mesh();
     return 0;
-
   }
 
 }
