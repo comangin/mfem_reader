@@ -22,10 +22,10 @@
 #include "../general/kdtree.hpp"
 #include "../general/sets.hpp"
 #include "../fem/quadinterpolator.hpp"
-#include <petsc.h>                                                          
-#include <petscdmplex.h>                                                
-#include <petscviewerhdf5.h>                                                                                                  
-                                
+#include <petsc.h>
+#include <petscdmplex.h>
+#include <petscviewerhdf5.h>
+
 
 // headers already included by mesh.hpp: <iostream>, <array>, <map>, <memory>
 #include <sstream>
@@ -4335,7 +4335,7 @@ Mesh::Mesh(const std::string &filename, int generate_edges, int refine,
     LoadDmplex(generate_edges, refine, fix_orientation);
     PetscFinalize();
   }
-  
+
 }
 
 Mesh::Mesh(std::istream &input, int generate_edges, int refine,
@@ -4730,7 +4730,7 @@ void Mesh::Loader(std::istream &input, int generate_edges,
       // Set vertex coordinates from the 'Nodes'
       SetVerticesFromNodes(Nodes);
    }
-    
+
    // If a parse tag was supplied, keep reading the stream until the tag is
    // encountered.
    if (mfem_version >= 12)
@@ -4760,7 +4760,7 @@ void Mesh::Loader(std::istream &input, int generate_edges,
    }
 
    // Finalize(...) should be called after this, if needed.
-     
+
 
 }
 

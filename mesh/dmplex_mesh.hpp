@@ -4,7 +4,7 @@
 #include <petsc.h>
 #include <petscdmplex.h>
 #include <petscviewerhdf5.h>
-#include "mesh.hpp"  
+#include "mesh.hpp"
 
 PetscErrorCode FinalizeHDF5(bool refine = false, bool fix_orientation = false);
 

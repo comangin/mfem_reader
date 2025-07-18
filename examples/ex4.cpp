@@ -59,29 +59,29 @@ real_t freq = 1.0, kappa;
 
 void display_mesh(const mfem::Mesh *mesh)
 {
-    printf("Nœuds du maillage :\n");
+   printf("Nœuds du maillage :\n");
 
-    for (int i = 0; i < mesh->GetNV(); ++i)
-    {
-        const double *node = mesh->GetVertex(i);
-        printf("Nœud %d : (%.6f, %.6f, %.6f)\n", i, node[0], node[1], node[2]);
-    }
+   for (int i = 0; i < mesh->GetNV(); ++i)
+   {
+      const double *node = mesh->GetVertex(i);
+      printf("Nœud %d : (%.6f, %.6f, %.6f)\n", i, node[0], node[1], node[2]);
+   }
 
-    printf("\nÉléments du maillage et leurs sommets :\n");
+   printf("\nÉléments du maillage et leurs sommets :\n");
 
-    for (int i = 0; i < mesh->GetNE(); ++i)
-    {
-        const mfem::Element *el = mesh->GetElement(i);
-        const int *v = el->GetVertices();
-        int nv = el->GetNVertices();
+   for (int i = 0; i < mesh->GetNE(); ++i)
+   {
+      const mfem::Element *el = mesh->GetElement(i);
+      const int *v = el->GetVertices();
+      int nv = el->GetNVertices();
 
-        printf("Élément %d : Sommets = [", i);
-        for (int j = 0; j < nv; ++j)
-        {
-            printf(" %d", v[j]);
-        }
-        printf(" ]\n");
-    }
+      printf("Élément %d : Sommets = [", i);
+      for (int j = 0; j < nv; ++j)
+      {
+         printf(" %d", v[j]);
+      }
+      printf(" ]\n");
+   }
 }
 
 
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
    args.AddOption(&set_bc, "-bc", "--impose-bc", "-no-bc", "--dont-impose-bc",
                   "Impose or not essential boundary conditions.");
    args.AddOption(&freq, "-f", "--frequency", "Set the frequency for the exact"
-                                              " solution.");
+                  " solution.");
    args.AddOption(&static_cond, "-sc", "--static-condensation", "-no-sc",
                   "--no-static-condensation", "Enable static condensation.");
    args.AddOption(&hybridization, "-hb", "--hybridization", "-no-hb",
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
    int dim = mesh->Dimension();
    int sdim = mesh->SpaceDimension();
 
-   mesh->PrintInfo();      
+   mesh->PrintInfo();
    display_mesh(mesh);
 
    // 4. Refine the mesh to increase the resolution. In this example we do
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
    //    elements.
    {
       int ref_levels =
-          (int)floor(log(25000. / mesh->GetNE()) / log(2.) / dim);
+         (int)floor(log(25000. / mesh->GetNE()) / log(2.) / dim);
       for (int l = 0; l < ref_levels; l++)
       {
          mesh->UniformRefinement();

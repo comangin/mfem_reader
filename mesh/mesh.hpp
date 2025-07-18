@@ -275,7 +275,7 @@ protected:
    // used during NC mesh initialization only
    Array<Triple<int, int, int> > tmp_vertex_parents;
 
-  DM dm;
+   DM dm;
 
 public:
    typedef Geometry::Constants<Geometry::SEGMENT>     seg_t;
@@ -347,11 +347,11 @@ protected:
                         bool &finalize_topo, const std::string &xml_prefix="");
    void ReadNURBSMesh(std::istream &input, int &curved, int &read_gf,
                       bool spacing=false);
-  void ReadInlineMesh(std::istream &input, bool generate_edges = false);
-  void ReadGmshMesh(std::istream &input, int &curved, int &read_gf);
-  void ReadGmshmsh41(std::istream &input, int &curved, int &read_gf);
-  // PETSC implementation dmplex_mesh.cpp
-  PetscErrorCode ReadDmplex(int curved, int read_gf);
+   void ReadInlineMesh(std::istream &input, bool generate_edges = false);
+   void ReadGmshMesh(std::istream &input, int &curved, int &read_gf);
+   void ReadGmshmsh41(std::istream &input, int &curved, int &read_gf);
+   // PETSC implementation dmplex_mesh.cpp
+   PetscErrorCode ReadDmplex(int curved, int read_gf);
 
    /* Note NetCDF (optional library) is used for reading cubit files */
 #ifdef MFEM_USE_NETCDF
@@ -595,17 +595,18 @@ protected:
    void Loader(std::istream &input, int generate_edges = 0,
                std::string parse_tag = "");
 
-  PetscErrorCode LoaderHDF5(int generate_edges, const std::string &parse_tag);
+   PetscErrorCode LoaderHDF5(int generate_edges, const std::string &parse_tag);
 
-  PetscErrorCode LoadDmplex(int generate_edges,int refine, bool fix_orientation); 
-  
-  PetscErrorCode LoadMeshHDF5fromfile(const std::string &filename,bool &is_dmplex);
+   PetscErrorCode LoadDmplex(int generate_edges,int refine, bool fix_orientation);
 
-  /** If NURBS mesh, write NURBS format. If NCMesh, write mfem v1.1 format.
-       If section_delimiter is empty, write mfem v1.0 format. Otherwise, write
-       mfem v1.2 format with the given section_delimiter at the end.
-       If @a comments is non-empty, it will be printed after the first line of
-       the file, and each line should begin with '#'. */
+   PetscErrorCode LoadMeshHDF5fromfile(const std::string &filename,
+                                       bool &is_dmplex);
+
+   /** If NURBS mesh, write NURBS format. If NCMesh, write mfem v1.1 format.
+        If section_delimiter is empty, write mfem v1.0 format. Otherwise, write
+        mfem v1.2 format with the given section_delimiter at the end.
+        If @a comments is non-empty, it will be printed after the first line of
+        the file, and each line should begin with '#'. */
    void Printer(std::ostream &os = mfem::out,
                 std::string section_delimiter = "",
                 const std::string &comments = "") const;
@@ -762,7 +763,7 @@ public:
    /// inputs.
 
 
-  virtual void Load(std::istream &input, int generate_edges = 0,
+   virtual void Load(std::istream &input, int generate_edges = 0,
                      int refine = 1, bool fix_orientation = true)
    {
       Loader(input, generate_edges);
@@ -799,9 +800,9 @@ public:
    static Mesh LoadFromFile(const std::string &filename,
                             int generate_edges = 0, int refine = 1,
                             bool fix_orientation = true);
-  
-  
-  
+
+
+
    /// Creates 1D mesh, divided into n equal intervals.
    static Mesh MakeCartesian1D(int n, real_t sx = 1.0);
 
