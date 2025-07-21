@@ -13435,6 +13435,7 @@ void Mesh::RemoveUnusedVertices()
 void Mesh::RemoveInternalBoundaries()
 {
    if (NURBSext || ncmesh) { return; }
+   if (be_to_face.Size() == 0) { return; }
 
    int num_bdr_elem = 0;
    int new_bel_to_edge_nnz = 0;

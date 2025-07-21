@@ -596,7 +596,7 @@ protected:
    void Loader(std::istream &input, int generate_edges = 0,
                std::string parse_tag = "");
 
-   PetscErrorCode LoaderHDF5(int generate_edges, const std::string &parse_tag);
+   PetscErrorCode LoaderHDF5(int generate_edges);
 
    PetscErrorCode LoadDmplex(int generate_edges,int refine, bool fix_orientation);
 

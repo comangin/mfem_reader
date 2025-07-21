@@ -56,11 +56,9 @@ PetscErrorCode Mesh::LoadMeshHDF5fromfile(const std::string &filename,
    return ierr;
 }
 
-PetscErrorCode Mesh::LoaderHDF5(int generate_edges,
-                                const std::string &parse_tag)
+PetscErrorCode Mesh::LoaderHDF5(int generate_edges)
 {
    int curved = 0, read_gf = 1;
-   bool finalize_topo = true;
 
    ReadDmplex(curved, read_gf);
    FinalizeTopology();
@@ -76,8 +74,7 @@ PetscErrorCode FinalizeHDF5(bool refine, bool fix_orientation)
 PetscErrorCode Mesh::LoadDmplex(int generate_edges, int refine,
                                 bool fix_orientation = true)
 {
-   std ::string tag_parse = "";
-   LoaderHDF5(generate_edges, tag_parse);
+   LoaderHDF5(generate_edges);
    Finalize(refine, fix_orientation);
 
    CheckElementOrientation(true);
@@ -121,10 +118,7 @@ PetscErrorCode Mesh::ReadDmplex(int curved, int read_gf)
       PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
    }
 
-   // ELEMENTS //
-   DMPolytopeType celltype;
-   PetscBool hasLabel;
-
+   // ELEMENTS IN CELL SETS //
    DMPlexGetHeightStratum(dm, 0, &numCellsStart, &numCellsEnd);
    NumOfElements = numCellsEnd - numCellsStart;
    elements.SetSize(NumOfElements);
@@ -157,17 +151,25 @@ PetscErrorCode Mesh::ReadDmplex(int curved, int read_gf)
          vertex_tetra[j] = vertex_tetra[j] - numCellsEnd;
       }
 
-      // PHYSICAL GROUP //
-      PetscBool hasLabel;
-      PetscInt groupID;
+      // ELEMENTS PHYSICAL GROUPS //
+      DMPolytopeType celltype;
+      PetscBool hasLabel, stratumHasPoint;
+      PetscInt groupID = -1, numLabelValues;
+      DMLabel cellSetslabel;
       DMHasLabel(dm, "Cell Sets", &hasLabel);
 
       if (hasLabel)
       {
-         DMGetLabelValue(dm, "Cell Sets", i, &groupID);
+         DMGetLabel(dm, "Cell Sets", &cellSetslabel);
+         DMLabelGetNumValues(cellSetslabel, &numLabelValues);
+         for (int j = 1; j <= numLabelValues; j++)
+         {
+            DMLabelStratumHasPoint(cellSetslabel, j, i, &stratumHasPoint);
+            if (stratumHasPoint) { groupID = j; }
+         }
       }
 
-      if (groupID == 0)
+      if (groupID == -1)
       {
          groupID = 1;
       }
@@ -246,6 +248,101 @@ PetscErrorCode Mesh::ReadDmplex(int curved, int read_gf)
       PetscCall(DMPlexRestoreTransitiveClosure(dm, i, PETSC_TRUE,
                                                &closureSize, reinterpret_cast<PetscInt **>(&closure)));
    }
+
+   // FACETS IN FACE SETS -> BOUNDARY ELEMENTS //
+   DMLabel faceSetslabel;
+   PetscBool hasLabel;
+   PetscInt numLabelValues, NumOfFacets;
+   IS is;
+   PetscInt p;
+   const PetscInt *points;
+   DMHasLabel(dm, "Face Sets", &hasLabel);
+   if (hasLabel)
+   {
+      DMGetLabel(dm, "Face Sets", &faceSetslabel);
+      DMLabelGetNumValues(faceSetslabel, &numLabelValues);
+      DMLabelGetStratumSize(faceSetslabel, 0, &NumOfFacets);
+      NumOfBdrElements = NumOfFacets;
+      boundary.SetSize(NumOfBdrElements);
+      DMLabelGetStratumIS(faceSetslabel, 0, &is);
+      if (is)
+      {
+         ISGetIndices(is, &points);
+         for (PetscInt i = 0; i < NumOfFacets; ++i)
+         {
+            PetscInt *closure = NULL;
+            PetscInt closureSize;
+
+            PetscCall(DMPlexGetTransitiveClosure(dm, points[i], PETSC_TRUE,
+                                                 &closureSize, reinterpret_cast<PetscInt **>(&closure)));
+            PetscInt vertex_tetra[closureSize];
+            PetscInt Nv = 0;
+            PetscInt vStart, vEnd;
+
+            PetscCall(DMPlexGetDepthStratum(dm, 0, &vStart, &vEnd));
+
+            for (PetscInt cl = 0; cl < closureSize * 2; cl += 2)
+            {
+               PetscInt vertex = closure[cl];
+
+               if (vertex >= vStart && vertex < vEnd)
+               {
+                  vertex_tetra[Nv++] = vertex;
+               }
+            }
+
+            for (PetscInt j = 0; j < Nv; ++j)
+            {
+               vertex_tetra[j] = vertex_tetra[j] - numCellsEnd;
+            }
+
+            DMPolytopeType celltype;
+            PetscBool stratumHasPoint;
+            PetscInt groupID = -1;
+
+            for (int j = 1; j <= numLabelValues; j++)
+            {
+               DMLabelStratumHasPoint(faceSetslabel, j, points[i], &stratumHasPoint);
+               if (stratumHasPoint)
+               {
+                  groupID = j;
+               }
+            }
+
+            if (groupID == -1)
+            {
+               groupID = 1;
+            }
+
+            // TYPE ELEMENT //
+            DMPlexGetCellType(dm, points[i], &celltype);
+            int tag;
+            switch (celltype)
+            {
+               case 0:
+                  boundary[i] = new Point(&vertex_tetra[0], groupID);
+                  break;
+               case 1:
+                  boundary[i] = new Segment(&vertex_tetra[0], groupID);
+                  break;
+               case 3:
+                  boundary[i] = new Triangle(&vertex_tetra[0], groupID);
+                  break;
+               case 4:
+                  boundary[i] = new Quadrilateral(&vertex_tetra[0], groupID);
+                  break;
+               default:
+                  mfem::err << "Unhandled cell type: " << celltype << std::endl;
+                  break;
+            }
+
+            PetscCall(DMPlexRestoreTransitiveClosure(dm, points[i], PETSC_TRUE,
+                                                     &closureSize, reinterpret_cast<PetscInt **>(&closure)));
+            ISRestoreIndices(is, &points);
+         }
+      }
+   }
+
    this->RemoveUnusedVertices();
    this->RemoveInternalBoundaries();
    display_mesh();

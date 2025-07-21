@@ -46,40 +46,13 @@ echo "=============================="
 echo "== Meshes without periodic test =="
 echo "=============================="
 
-echo "Mesh : elementary_mesh"
-$exec -m elementary_mesh.msh > res_msh
-$exec -m elementary_mesh.h5  > res_h5
+for mesh in elementary_mesh geometrie rectangle_mesh square_mesh boolean bspline_bezier_patches bspline_filling; do
+echo "Mesh : ${mesh}"
+$exec -m ${mesh}.msh > res_msh
+$exec -m ${mesh}.h5  > res_h5
 compare_stats
-
-echo "Mesh : geometrie"
-$exec -m geometrie.msh > res_msh
-$exec -m geometrie.h5 > res_h5
-compare_stats
-
-echo "Mesh : rectangle_mesh"
-$exec -m rectangle_mesh.msh > res_msh
-$exec -m rectangle_mesh.h5  > res_h5
-compare_stats
-
-echo "Mesh : square_mesh"
-$exec -m square_mesh.msh > res_msh
-$exec -m square_mesh.h5 > res_h5
-compare_stats
-
-echo "Mesh : boolean"
-$exec -m boolean.msh > res_msh
-$exec -m boolean.h5  > res_h5
-compare_stats
-
-echo "Mesh : bspline_bezier_patches"
-$exec -m bspline_bezier_patches.msh > res_msh
-$exec -m bspline_bezier_patches.h5  > res_h5
-compare_stats
-
-echo "Mesh : bspline_filling"
-$exec -m bspline_filling.msh > res_msh
-$exec -m bspline_filling.h5  > res_h5
-compare_stats
+echo
+done
 
 echo ""
 echo "==========================="
