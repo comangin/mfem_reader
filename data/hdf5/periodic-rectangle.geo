@@ -34,5 +34,5 @@ Mesh 3;
 Mesh.MshFileVersion = 2.2;
 
 Periodic Surface {out[0]} = {1} Translate {0, 0, 1};
-Periodic Surface {out[4]} = {out[2]} Translate {0, 1, 0};
-Periodic Surface {out[3]} = {out[5]} Translate {1, 0, 0};
+Periodic Surface {out[4]} = {out[2]} Translate {0, 0.5, 0};
+Periodic Surface {out[3]} = {out[5]} Translate {0.5, 0, 0};
