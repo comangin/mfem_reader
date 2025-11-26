@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2025, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -28,16 +28,23 @@ namespace mfem
 {
 
 bool Hypre::configure_runtime_policy_from_mfem = true;
+Hypre::State Hypre::state = Hypre::State::UNINITIALIZED;
 
-Hypre::Hypre()
+void Hypre::Init()
 {
+   if (state != State::INITIALIZED)
+   {
 #if MFEM_HYPRE_VERSION >= 21900
-   // Initializing hypre
-   HYPRE_Init();
+      HYPRE_Init();
 #endif
-
-   // Global hypre options that we set by default
-   SetDefaultOptions();
+      SetDefaultOptions();
+      // Apply the setting of 'configure_runtime_policy_from_mfem' according to
+      // the current configuration of the mfem::Device (HYPRE >= 2.31.0):
+      InitDevice();
+      // Create the singleton Hypre object AFTER initializing HYPRE:
+      Instance();
+   }
+   state = State::INITIALIZED;
 }
 
 void Hypre::InitDevice()
@@ -48,6 +55,8 @@ void Hypre::InitDevice()
 #if defined(HYPRE_USING_GPU) && (MFEM_HYPRE_VERSION >= 23100)
    if (configure_runtime_policy_from_mfem)
    {
+      MFEM_VERIFY(HYPRE_Initialized(), "HYPRE must be initialized before"
+                  " calling Hypre::InitDevice()");
       if (Device::Allows(Backend::DEVICE_MASK & ~Backend::DEBUG_DEVICE))
       {
          HYPRE_SetMemoryLocation(HYPRE_MEMORY_DEVICE);
@@ -65,14 +74,13 @@ void Hypre::InitDevice()
 
 void Hypre::Finalize()
 {
-   Hypre &hypre = Instance();
-   if (!hypre.finalized)
+   if (state != State::UNINITIALIZED)
    {
 #if MFEM_HYPRE_VERSION >= 21900
       HYPRE_Finalize();
 #endif
-      hypre.finalized = true;
    }
+   state = State::UNINITIALIZED;
 }
 
 void Hypre::SetDefaultOptions()
@@ -553,7 +561,8 @@ void CopyMemory(Memory<T> &src, Memory<T> &dst, MemoryClass dst_mc,
     this function. In particular, @a dst should be empty or deleted before
     calling this function. */
 template <typename SrcT, typename DstT>
-void CopyConvertMemory(Memory<SrcT> &src, MemoryClass dst_mc, Memory<DstT> &dst)
+void CopyConvertMemory(const Memory<SrcT> &src, MemoryClass dst_mc,
+                       Memory<DstT> &dst)
 {
    auto capacity = src.Capacity();
    dst.New(capacity, GetMemoryType(dst_mc));
@@ -834,8 +843,8 @@ static int GetPartitioningArraySize(MPI_Comm comm)
 ///
 /// Both @a row and @a col are partitioning arrays, whose length is returned by
 /// GetPartitioningArraySize(), see @ref hypre_partitioning_descr.
-static bool RowAndColStartsAreEqual(MPI_Comm comm, HYPRE_BigInt *rows,
-                                    HYPRE_BigInt *cols)
+static bool RowAndColStartsAreEqual(MPI_Comm comm, const HYPRE_BigInt *rows,
+                                    const HYPRE_BigInt *cols)
 {
    const int part_size = GetPartitioningArraySize(comm);
    bool are_equal = true;
@@ -847,7 +856,7 @@ static bool RowAndColStartsAreEqual(MPI_Comm comm, HYPRE_BigInt *rows,
          break;
       }
    }
-   MPI_Allreduce(MPI_IN_PLACE, &are_equal, 1,  MPI_C_BOOL, MPI_LAND, comm);
+   MPI_Allreduce(MPI_IN_PLACE, &are_equal, 1,  MFEM_MPI_CXX_BOOL, MPI_LAND, comm);
    return are_equal;
 }
 
@@ -1123,7 +1132,7 @@ HypreParMatrix::HypreParMatrix(
 HypreParMatrix::HypreParMatrix(MPI_Comm comm,
                                HYPRE_BigInt *row_starts,
                                HYPRE_BigInt *col_starts,
-                               SparseMatrix *sm_a)
+                               const SparseMatrix *sm_a)
 {
    MFEM_ASSERT(sm_a != NULL, "invalid input");
    MFEM_VERIFY(!HYPRE_AssumedPartitionCheck(),
@@ -1137,7 +1146,7 @@ HypreParMatrix::HypreParMatrix(MPI_Comm comm,
 
    hypre_CSRMatrixSetDataOwner(csr_a,0);
    MemoryIJData mem_a;
-   CopyCSR(sm_a, mem_a, csr_a, false);
+   CopyCSR(const_cast<SparseMatrix*>(sm_a), mem_a, csr_a, false);
    hypre_CSRMatrixSetRownnz(csr_a);
 
    // NOTE: this call creates a matrix on host even when device support is
@@ -1299,10 +1308,11 @@ HypreParMatrix::HypreParMatrix(MPI_Comm comm, int id, int np,
 HypreParMatrix::HypreParMatrix(MPI_Comm comm, int nrows,
                                HYPRE_BigInt glob_nrows,
                                HYPRE_BigInt glob_ncols,
-                               int *I, HYPRE_BigInt *J,
-                               real_t *data,
-                               HYPRE_BigInt *rows,
-                               HYPRE_BigInt *cols)
+                               const int *I,
+                               const HYPRE_BigInt *J,
+                               const real_t *data,
+                               const HYPRE_BigInt *rows,
+                               const HYPRE_BigInt *cols)
 {
    Init();
 
@@ -2319,8 +2329,8 @@ void HypreParMatrix::Threshold(real_t threshold)
    /* TODO: GenerateDiagAndOffd() uses an int array of size equal to the number
       of columns in csr_A_wo_z which is the global number of columns in A. This
       does not scale well. */
-   ierr += GenerateDiagAndOffd(csr_A_wo_z,parcsr_A_ptr,
-                               col_start,col_end);
+   ierr += hypre_GenerateDiagAndOffd(csr_A_wo_z,parcsr_A_ptr,
+                                     col_start,col_end);
 
    ierr += hypre_CSRMatrixDestroy(csr_A_wo_z);
 
@@ -2566,6 +2576,18 @@ void HypreParMatrix::EliminateBC(const Array<int> &ess_dofs,
 #if defined(HYPRE_USING_GPU)
       if (HypreUsingGPU())
       {
+#if defined(HYPRE_WITH_GPU_AWARE_MPI) || defined(HYPRE_USING_GPU_AWARE_MPI)
+         // hypre_GetGpuAwareMPI() was introduced in v2.31.0, however, its value
+         // is not checked in hypre_ParCSRCommHandleCreate_v2() before v2.33.0,
+         // instead only HYPRE_WITH_GPU_AWARE_MPI is checked.
+#if MFEM_HYPRE_VERSION >= 23300
+         if (hypre_GetGpuAwareMPI())
+#endif
+         {
+            // ensure int_buf_data has been computed before sending it
+            MFEM_STREAM_SYNC;
+         }
+#endif
          // Try to use device-aware MPI for the communication if available
          comm_handle = hypre_ParCSRCommHandleCreate_v2(
                           11, comm_pkg, HYPRE_MEMORY_DEVICE, int_buf_data,
@@ -5355,8 +5377,8 @@ void HypreBoomerAMG::SetAdvectiveOptions(int distanceR,
    int ns_down = 0, ns_up = 0, ns_coarse; // init to suppress gcc warnings
    if (distanceR > 0)
    {
-      ns_down = prerelax.length();
-      ns_up = postrelax.length();
+      ns_down = static_cast<int>(prerelax.length());
+      ns_up = static_cast<int>(postrelax.length());
       ns_coarse = 1;
 
       // Array to store relaxation scheme and pass to Hypre
